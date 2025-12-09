@@ -3,37 +3,42 @@ import time
 from pypdf import PdfReader
 from docx import Document
 from bs4 import BeautifulSoup
+from openai import OpenAI
 import google.generativeai as genai
 
-# ---------------- CONFIG ----------------
+# ---------------- PROVIDER SWITCH ----------------
 
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+PROVIDER = st.selectbox(
+    "Choose LLM:",
+    ["Open-source (Mistral)", "Closed-source (Gemini)"]
+)
 
-MODEL_NAME = "models/gemini-1.5-flash"
+# ---------------- CLIENT SETUP ----------------
 
-model = genai.GenerativeModel(MODEL_NAME)
+if PROVIDER == "Open-source (Mistral)":
+    client = OpenAI(
+        api_key=st.secrets["OPENROUTER_API_KEY"],
+        base_url="https://openrouter.ai/api/v1"
+    )
+    MODEL_NAME = "mistralai/mistral-7b-instruct"
+else:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    gemini_model = genai.GenerativeModel("models/gemini-1.5-flash")
 
-FALLBACK_RESPONSE = """I'm happy to play along.
+# ---------------- PROMPTS ----------------
 
-since the context is empty, i'll answer the question directly:
-I am an AI designed to simulate human-like conversations and provide information on a wide range of topics. I don't have personal experiences, emotions, or physical presence, but I'm here to help answer your questions and engage in discussions to the best of my abilities.
-"""
-
-ABBREVIATION_PROMPT = """
-You extract abbreviation indexes from academic articles.
-
-Return ONLY in this format:
-• ABBR: full term
-
-If no abbreviations are found, reply exactly:
-NO_ABBREVIATIONS_FOUND
+SUMMARY_PROMPT = """
+Summarize the following document text.
+Preserve definitions, abbreviations, and key findings.
 """
 
 QA_PROMPT = """
-You are an AI assistant answering questions using ONLY the provided document context.
-If the answer is not contained in the context, say:
-"I don’t have enough information in the document to answer that."
+You are answering questions using the document content below.
+Answer as accurately as possible.
+If the document only partially answers the question, answer with uncertainty noted.
 """
+
+FALLBACK_RESPONSE = """I couldn’t find enough information in the document to answer confidently."""
 
 # ---------------- DOCUMENT EXTRACTION ----------------
 
@@ -56,7 +61,7 @@ def extract_text(file):
         return soup.get_text(separator="\n")
 
     else:
-        raise ValueError("Unsupported file format")
+        raise ValueError("Unsupported format")
 
 # ---------------- CHUNKING ----------------
 
@@ -76,54 +81,60 @@ def chunk_text(text, max_chars=1800):
 
 def call_llm(prompt, text):
     try:
-        response = model.generate_content(
-            f"{prompt}\n\n{text}",
-            generation_config={"temperature": 0}
-        )
-        return response.text.strip()
+        if PROVIDER == "Open-source (Mistral)":
+            r = client.chat.completions.create(
+                model=MODEL_NAME,
+                temperature=0,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": text}
+                ]
+            )
+            return r.choices[0].message.content.strip()
+
+        else:
+            r = gemini_model.generate_content(
+                f"{prompt}\n\n{text}",
+                generation_config={"temperature": 0}
+            )
+            return r.text.strip()
+
     except Exception as e:
-        st.warning(f"Gemini call skipped: {e}")
-        return "NO_ABBREVIATIONS_FOUND"
+        st.warning(f"LLM error: {e}")
+        return ""
 
-# ---------------- STREAMLIT UI ----------------
+# ---------------- UI ----------------
 
-st.title("📄 Document Q&A (Closed-Source LLM – Free API)")
-
-mode = st.radio("Choose mode:", ["Enter your Question", "Extract abbreviations"])
+st.title("📄 Document Q&A (Open-source ↔ Gemini)")
 
 uploaded_file = st.file_uploader(
-    "Upload a document",
+    "Upload document",
     type=["pdf", "txt", "docx", "html"]
 )
 
-user_question = st.chat_input("Ask something about the document")
+question = st.chat_input("Ask a question about the document")
 
 if uploaded_file:
     text = extract_text(uploaded_file)
     chunks = chunk_text(text)
 
-    if mode == "Extract abbreviations":
-        outputs = []
+    # Step 1: summarize entire document
+    summaries = []
+    with st.spinner("Understanding document..."):
+        for c in chunks:
+            s = call_llm(SUMMARY_PROMPT, c)
+            if s:
+                summaries.append(s)
+            time.sleep(0.2)
 
-        for chunk in chunks:
-            r = call_llm(ABBREVIATION_PROMPT, chunk)
-            if r != "NO_ABBREVIATIONS_FOUND":
-                outputs.append(r)
-            time.sleep(0.25)
+    doc_summary = "\n".join(summaries)
 
-        final = "\n".join(sorted(set(outputs))) if outputs else FALLBACK_RESPONSE
-        st.markdown(final)
+    if question:
+        answer = call_llm(
+            QA_PROMPT,
+            f"Document summary:\n{doc_summary}\n\nQuestion:\n{question}"
+        )
 
-    elif user_question:
-        answers = []
-
-        for chunk in chunks:
-            ans = call_llm(
-                QA_PROMPT,
-                f"Context:\n{chunk}\n\nQuestion:\n{user_question}"
-            )
-            if "don’t have enough information" not in ans.lower():
-                answers.append(ans)
-            time.sleep(0.25)
-
-        st.markdown(answers[0] if answers else FALLBACK_RESPONSE)
+        st.chat_message("assistant").markdown(
+            answer if answer else FALLBACK_RESPONSE
+        )
