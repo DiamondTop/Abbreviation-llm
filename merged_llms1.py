@@ -1,22 +1,26 @@
 import streamlit as st
-from openai import OpenAI, APIConnectionError, AuthenticationError, RateLimitError, APIError # Add these
-from pypdf import PdfReader
 import time
+from openai import OpenAI
+from pypdf import PdfReader
+from docx import Document
+from bs4 import BeautifulSoup
 
 # ---------------- CONFIG ----------------
 
 client = OpenAI(
-    api_key=st.secrets["OPENROUTER_API_KEY"], 
-    base_url="openrouter.ai" 
+    api_key=st.secrets["OPENROUTER_API_KEY"],
+    base_url="https://openrouter.ai/api/v1"
 )
+
+MODEL_NAME = "mistralai/mistral-7b-instruct"
 
 FALLBACK_RESPONSE = """I'm happy to play along.
 
 since the context is empty, i'll answer the question directly:
-I am an AI designed to simulate human-like conversations and provide information on a wide range of topics. I don't have personal experiences, emotions, or physical presence, but I'm here to help answer your questions and engage in discussions to the best of my abilities.
+I am an AI designed to simulate human-like conversations and provide information on a wide range of topics.
 """
 
-SYSTEM_PROMPT = """
+ABBREVIATION_PROMPT = """
 You extract abbreviation indexes from academic articles.
 
 Return ONLY in this format:
@@ -26,107 +30,104 @@ If no abbreviations are found, reply exactly:
 NO_ABBREVIATIONS_FOUND
 """
 
-# ---------------- FUNCTIONS ----------------
+QA_PROMPT = """
+You are an AI assistant answering questions using ONLY the provided document context.
+If the answer is not contained in the context, say:
+"I don’t have enough information in the document to answer that."
+"""
 
-def extract_pdf_text(file):
-    reader = PdfReader(file)
-    pages = []
-    for page in reader.pages:
-        text = page.extract_text()
-        if text and len(text.strip()) > 50:  # skip junk pages
-            pages.append(text)
-    return "\n".join(pages)
+# ---------------- DOCUMENT EXTRACTION ----------------
 
+def extract_text(file):
+    ext = file.name.split(".")[-1].lower()
 
-def call_llm(text: str) -> str:
+    if ext == "pdf":
+        reader = PdfReader(file)
+        return "\n".join(
+            page.extract_text() or "" for page in reader.pages
+        )
+
+    elif ext == "txt":
+        return file.read().decode("utf-8", errors="ignore")
+
+    elif ext == "docx":
+        doc = Document(file)
+        return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+
+    elif ext in ["html", "htm"]:
+        soup = BeautifulSoup(file.read(), "html.parser")
+        return soup.get_text(separator="\n")
+
+    else:
+        raise ValueError("Unsupported file format")
+
+# ---------------- CHUNKING ----------------
+
+def chunk_text(text, max_chars=1500):
+    chunks, current = [], ""
+    for line in text.split("\n"):
+        if len(current) + len(line) <= max_chars:
+            current += line + "\n"
+        else:
+            chunks.append(current)
+            current = line + "\n"
+    if current.strip():
+        chunks.append(current)
+    return chunks
+
+# ---------------- LLM CALL ----------------
+
+def call_llm(prompt, text):
     try:
         response = client.chat.completions.create(
-            model="mistralai/mistral-7b-instruct",
+            model=MODEL_NAME,
             temperature=0,
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": prompt},
                 {"role": "user", "content": text}
             ]
         )
         return response.choices[0].message.content.strip()
-
-    except APIConnectionError as e:
-        st.error(f"Network/DNS Error: {e}")
-        st.exception(e) # Show full error details
-        return "NO_ABBREVIATIONS_FOUND"
-    except (AuthenticationError, RateLimitError, APIError) as e:
-        st.error(f"API Error (Auth/Quota): {e}")
-        st.exception(e) # Show full error details
-        return "NO_ABBREVIATIONS_FOUND"
     except Exception as e:
-        st.exception(e) # Show full error details for any other issue
-        st.warning("Skipped a chunk due to an unexpected error.")
+        st.warning(f"LLM call skipped: {e}")
         return "NO_ABBREVIATIONS_FOUND"
-
-def chunk_text(text, max_chars=1500):
-    chunks = []
-    current = ""
-
-    for paragraph in text.split("\n"):
-        paragraph = paragraph.strip()
-        if not paragraph:
-            continue
-
-        if len(current) + len(paragraph) <= max_chars:
-            current += paragraph + "\n"
-        else:
-            chunks.append(current)
-            current = paragraph + "\n"
-
-    if current.strip():
-        chunks.append(current)
-
-    return chunks
-
 
 # ---------------- STREAMLIT UI ----------------
 
-st.title("📘Input to AI - Abbreviation Index Generator")
+st.title("📄 Document Q&A with Open-Source LLM")
 
-uploaded_pdf = st.file_uploader("Enter your Question", type=["pdf"])
-user_input = st.chat_input("Ask a question")
+mode = st.radio("Choose mode:", ["Ask questions", "Extract abbreviations"])
+uploaded_file = st.file_uploader(
+    "Upload a document",
+    type=["pdf", "txt", "docx", "html"]
+)
+user_question = st.chat_input("Ask something about the document")
 
-# -------- PDF MODE --------
-if uploaded_pdf:
-    with st.spinner("Processing PDF..."):
-        try:
-            text = extract_pdf_text(uploaded_pdf) # <--- The line 50 equivalent
-        except Exception as e:
-            st.error(f"Failed to process PDF. Specific error: {e}")
-            st.exception(e) # This will show the full traceback in the UI
-            st.stop() # Stop execution here
-            
-        chunks = chunk_text(text)
+if uploaded_file:
+    text = extract_text(uploaded_file)
+    chunks = chunk_text(text)
 
-        results = []
+    if mode == "Extract abbreviations":
+        prompt = ABBREVIATION_PROMPT
+        outputs = []
 
         for chunk in chunks:
-            r = call_llm(chunk)
+            r = call_llm(prompt, chunk)
             if r != "NO_ABBREVIATIONS_FOUND":
-                results.append(r)
-            time.sleep(0.3)  # rate-limit safety
+                outputs.append(r)
+            time.sleep(0.3)
 
-        if results:
-            result = "\n".join(sorted(set(results)))
-        else:
-            result = FALLBACK_RESPONSE
+        final = "\n".join(sorted(set(outputs))) if outputs else FALLBACK_RESPONSE
+        st.markdown(final)
 
-    st.chat_message("assistant").markdown(result)
+    elif user_question:
+        prompt = QA_PROMPT
+        answers = []
 
-# -------- CHAT MODE --------
-elif user_input:
-    st.chat_message("user").markdown(user_input)
+        for chunk in chunks:
+            ans = call_llm(prompt, f"Context:\n{chunk}\n\nQuestion:\n{user_question}")
+            if "don’t have enough information" not in ans.lower():
+                answers.append(ans)
+            time.sleep(0.3)
 
-    if len(user_input.split()) < 8:
-        response = FALLBACK_RESPONSE
-    else:
-        response = call_llm(user_input)
-        if response == "NO_ABBREVIATIONS_FOUND":
-            response = FALLBACK_RESPONSE
-
-    st.chat_message("assistant").markdown(response)
+        st.markdown(answers[0] if answers else FALLBACK_RESPONSE)
