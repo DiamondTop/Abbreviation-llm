@@ -1,5 +1,5 @@
 import streamlit as st
-from openai import OpenAI
+from openai import OpenAI, APIConnectionError, AuthenticationError, RateLimitError, APIError # Add these
 from pypdf import PdfReader
 import time
 
@@ -40,9 +40,8 @@ def extract_pdf_text(file):
 
 def call_llm(text: str) -> str:
     try:
-        # We will use a free/cheap model offered via OpenRouter, e.g., 'mistralai/mistral-7b-instruct'
         response = client.chat.completions.create(
-            model="mistralai/mistral-7b-instruct", # A commonly free/cheap model on OpenRouter
+            model="mistralai/mistral-7b-instruct",
             temperature=0,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
@@ -51,9 +50,17 @@ def call_llm(text: str) -> str:
         )
         return response.choices[0].message.content.strip()
 
+    except APIConnectionError as e:
+        st.error(f"Network/DNS Error: {e}")
+        st.exception(e) # Show full error details
+        return "NO_ABBREVIATIONS_FOUND"
+    except (AuthenticationError, RateLimitError, APIError) as e:
+        st.error(f"API Error (Auth/Quota): {e}")
+        st.exception(e) # Show full error details
+        return "NO_ABBREVIATIONS_FOUND"
     except Exception as e:
-        st.error(f"An OpenRouter/LLM error occurred: {e}") 
-        st.warning("Skipped a chunk due to LLM error.")
+        st.exception(e) # Show full error details for any other issue
+        st.warning("Skipped a chunk due to an unexpected error.")
         return "NO_ABBREVIATIONS_FOUND"
 
 def chunk_text(text, max_chars=1500):
