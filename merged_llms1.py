@@ -46,6 +46,9 @@ FALLBACK_RESPONSE = """I couldn’t find enough information in the document to a
 # ---------------- DOCUMENT EXTRACTION ----------------
 
 def extract_text(file):
+    # NOTE: This function currently only handles PDFs.
+    # You will need to add logic for .txt, .docx, and .html
+    # if you want to support those file types in the uploader.
     reader = PdfReader(file)
     pages = []
 
@@ -59,7 +62,8 @@ def extract_text(file):
 
     return "\n".join(pages)
 
-
+# The problematic code snippet has been removed from here
+# and moved into the `if uploaded_file:` block below.
 
 
 # ---------------- CHUNKING ----------------
@@ -116,11 +120,11 @@ question = st.chat_input("Ask a question about the document")
 if uploaded_file:
     text = extract_text(uploaded_file)
 
-
+    # MOVED: The validation check is now safely inside this block
     if not text or len(text.strip()) < 500:
-    	st.error("Unable to extract readable text from this PDF. The document may be scanned or image-based.")
-   	st.stop()
-
+        st.error("Unable to extract readable text from this PDF. The document may be scanned or image-based.")
+        st.stop()
+        
     chunks = chunk_text(text)
 
     # Step 1: 
