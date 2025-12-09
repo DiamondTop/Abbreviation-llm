@@ -189,9 +189,10 @@ if question:
         )
 
     else:
-        # ✅ CHAT MODE (no document uploaded)
+        # CHAT MODE (no document uploaded)
         answer = call_llm(CHAT_PROMPT, question)
         st.chat_message("assistant").markdown(
             answer if answer else FALLBACK_RESPONSE
         )
+
 
