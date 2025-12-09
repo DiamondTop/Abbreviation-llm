@@ -40,6 +40,24 @@ def extract_pdf_text(file):
     reader = PdfReader(file)
     return "\n".join(page.extract_text() or "" for page in reader.pages)
 
+
+def chunk_text(text, max_chars=3000):
+    chunks = []
+    current = ""
+
+    for paragraph in text.split("\n"):
+        if len(current) + len(paragraph) <= max_chars:
+            current += paragraph + "\n"
+        else:
+            chunks.append(current)
+            current = paragraph + "\n"
+
+    if current.strip():
+        chunks.append(current)
+
+    return chunks
+
+
 # ---------------- STREAMLIT UI ----------------
 
 st.title("📘 Abbreviation Index Generator")
@@ -47,15 +65,26 @@ st.title("📘 Abbreviation Index Generator")
 uploaded_pdf = st.file_uploader("Upload an academic PDF", type=["pdf"])
 user_input = st.chat_input("Ask a question")
 
+# -------- PDF MODE --------
 if uploaded_pdf:
     text = extract_pdf_text(uploaded_pdf)
-    result = call_openai(text)
+    chunks = chunk_text(text)
 
-    if result == "NO_ABBREVIATIONS_FOUND":
+    results = []
+
+    for chunk in chunks:
+        r = call_openai(chunk)
+        if r != "NO_ABBREVIATIONS_FOUND":
+            results.append(r)
+
+    if results:
+        result = "\n".join(sorted(set(results)))
+    else:
         result = FALLBACK_RESPONSE
 
     st.chat_message("assistant").markdown(result)
 
+# -------- CHAT MODE --------
 elif user_input:
     st.chat_message("user").markdown(user_input)
 
