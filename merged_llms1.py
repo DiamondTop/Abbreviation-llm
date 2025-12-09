@@ -5,6 +5,8 @@ from docx import Document
 from bs4 import BeautifulSoup
 from openai import OpenAI
 import google.generativeai as genai
+#pip install pytesseract pillow pdf2image
+
 
 # ---------------- PROVIDER SWITCH ----------------
 
@@ -44,25 +46,23 @@ FALLBACK_RESPONSE = """I couldn’t find enough information in the document to a
 # ---------------- DOCUMENT EXTRACTION ----------------
 
 def extract_text(file):
-    ext = file.name.split(".")[-1].lower()
+    reader = PdfReader(file)
+    pages = []
 
-    if ext == "pdf":
-        reader = PdfReader(file)
-        return "\n".join(page.extract_text() or "" for page in reader.pages)
+    for i, page in enumerate(reader.pages):
+        try:
+            text = page.extract_text()
+            if text and len(text.strip()) > 100:
+                pages.append(text)
+        except Exception:
+            continue
 
-    elif ext == "txt":
-        return file.read().decode("utf-8", errors="ignore")
+    return "\n".join(pages)
 
-    elif ext == "docx":
-        doc = Document(file)
-        return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+if not text or len(text.strip()) < 500:
+    st.error("Unable to extract readable text from this PDF. The document may be scanned or image-based.")
+    st.stop()
 
-    elif ext in ["html", "htm"]:
-        soup = BeautifulSoup(file.read(), "html.parser")
-        return soup.get_text(separator="\n")
-
-    else:
-        raise ValueError("Unsupported format")
 
 # ---------------- CHUNKING ----------------
 
@@ -119,7 +119,19 @@ if uploaded_file:
     text = extract_text(uploaded_file)
     chunks = chunk_text(text)
 
-    # Step 1: summarize entire document
+    # Step 1: 
+    SUMMARY_PROMPT = """
+You are summarizing an academic article.
+
+Rules:
+- Use ONLY information explicitly present in the text
+- Do NOT add generic academic commentary
+- If the content is unclear or incomplete, say so
+- Preserve technical terms and abbreviations
+
+Return a concise factual summary.
+"""
+
     summaries = []
     with st.spinner("Understanding document..."):
         for c in chunks:
