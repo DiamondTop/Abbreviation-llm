@@ -108,14 +108,14 @@ def call_llm(prompt, text):
 
 # ---------------- UI ----------------
 
-st.title("📄 Document Q&A (Open-source ↔ Gemini)")
+st.title("📄 Input to AI - Document Q&A (Open-source ↔ Gemini)")
 
 uploaded_file = st.file_uploader(
     "Upload document",
     type=["pdf", "txt", "docx", "html"]
 )
 
-question = st.chat_input("Ask a question about the document")
+question = st.chat_input("Enter your question")
 
 if uploaded_file:
     text = extract_text(uploaded_file)
