@@ -79,9 +79,9 @@ def chunk_text(text, max_chars=1500):
 
 # ---------------- STREAMLIT UI ----------------
 
-st.title("📘 Abbreviation Index Generator")
+st.title("📘Input to AI - Abbreviation Index Generator")
 
-uploaded_pdf = st.file_uploader("Upload an academic PDF", type=["pdf"])
+uploaded_pdf = st.file_uploader("Enter your Question", type=["pdf"])
 user_input = st.chat_input("Ask a question")
 
 # -------- PDF MODE --------
@@ -99,7 +99,7 @@ if uploaded_pdf:
         results = []
 
         for chunk in chunks:
-            r = call_openai(chunk)
+            r = call_llm(chunk)
             if r != "NO_ABBREVIATIONS_FOUND":
                 results.append(r)
             time.sleep(0.3)  # rate-limit safety
@@ -118,7 +118,7 @@ elif user_input:
     if len(user_input.split()) < 8:
         response = FALLBACK_RESPONSE
     else:
-        response = call_openai(user_input)
+        response = call_llm(user_input)
         if response == "NO_ABBREVIATIONS_FOUND":
             response = FALLBACK_RESPONSE
 
