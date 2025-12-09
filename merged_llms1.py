@@ -47,9 +47,14 @@ user_input = st.chat_input("Ask a question")
 # -------- PDF MODE --------
 if uploaded_pdf:
     with st.spinner("Processing PDF..."):
-        text = extract_pdf_text(uploaded_pdf)
+        try:
+            text = extract_pdf_text(uploaded_pdf) # <--- The line 50 equivalent
+        except Exception as e:
+            st.error(f"Failed to process PDF. Specific error: {e}")
+            st.exception(e) # This will show the full traceback in the UI
+            st.stop() # Stop execution here
+            
         chunks = chunk_text(text)
-
         results = []
 
         for chunk in chunks:
