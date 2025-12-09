@@ -38,8 +38,10 @@ def call_openai(text: str) -> str:
         return response.choices[0].message.content.strip()
 
     except Exception as e:
-        # Do NOT crash the app
-        st.warning(f"Skipped a chunk due to OpenAI error.")
+        # Do NOT crash the app - but show the specific error to the user for debugging
+        st.error(f"An OpenAI error occurred: {e}") 
+        # You can use st.exception(e) for a detailed traceback
+        st.warning("Skipped a chunk due to OpenAI error (see error details above).")
         return "NO_ABBREVIATIONS_FOUND"
 
 
@@ -114,3 +116,4 @@ elif user_input:
             response = FALLBACK_RESPONSE
 
     st.chat_message("assistant").markdown(response)
+
