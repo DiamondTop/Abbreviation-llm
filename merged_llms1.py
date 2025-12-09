@@ -7,7 +7,7 @@ import time
 
 client = OpenAI(
     api_key=st.secrets["OPENROUTER_API_KEY"], 
-    base_url="openrouter.ai"
+    base_url="openrouter.ai" 
 )
 
 FALLBACK_RESPONSE = """I'm happy to play along.
