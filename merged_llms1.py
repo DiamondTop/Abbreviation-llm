@@ -28,24 +28,6 @@ NO_ABBREVIATIONS_FOUND
 
 # ---------------- FUNCTIONS ----------------
 
-def call_openai(text: str) -> str:
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": text}
-            ]
-        )
-        return response.choices[0].message.content.strip()
-
-    except Exception as e:
-        # Do NOT crash the app
-        st.warning(f"Skipped a chunk due to OpenAI error.")
-        return "NO_ABBREVIATIONS_FOUND"
-
-
 def extract_pdf_text(file):
     reader = PdfReader(file)
     pages = []
