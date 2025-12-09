@@ -59,9 +59,7 @@ def extract_text(file):
 
     return "\n".join(pages)
 
-if not text or len(text.strip()) < 500:
-    st.error("Unable to extract readable text from this PDF. The document may be scanned or image-based.")
-    st.stop()
+
 
 
 # ---------------- CHUNKING ----------------
@@ -117,6 +115,12 @@ question = st.chat_input("Ask a question about the document")
 
 if uploaded_file:
     text = extract_text(uploaded_file)
+
+
+    if not text or len(text.strip()) < 500:
+    	st.error("Unable to extract readable text from this PDF. The document may be scanned or image-based.")
+   	st.stop()
+
     chunks = chunk_text(text)
 
     # Step 1: 
