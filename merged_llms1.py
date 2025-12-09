@@ -59,8 +59,8 @@ If the answer is not clearly present, reply exactly:
 
 FALLBACK_RESPONSE = """I'm happy to play along.
 
-Since there is no usable document context, I'll answer directly.
-I am an AI designed to simulate human-like conversations and provide information across many topics.
+since the context is empty, i'll answer the question directly:
+I am an AI designed to simulate human-like conversations and provide information on a wide range of topics. I don't have personal experiences, emotions, or physical presence, but I'm here to help answer your questions and engage in discussions to the best of my abilities.
 """
 
 # ==============================
@@ -194,3 +194,4 @@ if question:
         st.chat_message("assistant").markdown(
             answer if answer else FALLBACK_RESPONSE
         )
+
