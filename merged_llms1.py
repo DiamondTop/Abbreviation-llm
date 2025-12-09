@@ -23,7 +23,8 @@ if PROVIDER == "Open-source (Mistral)":
     MODEL_NAME = "mistralai/mistral-7b-instruct"
 else:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    gemini_model = genai.GenerativeModel("models/gemini-1.5-flash")
+    gemini_model = genai.GenerativeModel("gemini-2.5-flash")
+
 
 # ---------------- PROMPTS ----------------
 
