@@ -2,4 +2,4 @@ streamlit
 pypdf
 python-docx
 beautifulsoup4
-openai
+google-generativeai
