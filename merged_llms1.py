@@ -14,11 +14,12 @@ client = OpenAI(
 
 MODEL_NAME = "mistralai/mistral-7b-instruct"
 
-FALLBACK_RESPONSE = """I'm happy to play along.
+FALLBACK_RESPONSE ="""I'm happy to play along.
 
 since the context is empty, i'll answer the question directly:
-I am an AI designed to simulate human-like conversations and provide information on a wide range of topics.
+I am an AI designed to simulate human-like conversations and provide information on a wide range of topics. I don't have personal experiences, emotions, or physical presence, but I'm here to help answer your questions and engage in discussions to the best of my abilities.
 """
+
 
 ABBREVIATION_PROMPT = """
 You extract abbreviation indexes from academic articles.
@@ -94,9 +95,9 @@ def call_llm(prompt, text):
 
 # ---------------- STREAMLIT UI ----------------
 
-st.title("📄 Document Q&A with Open-Source LLM")
+st.title("📘Input to AI - Abbreviation Index Generator")
 
-mode = st.radio("Choose mode:", ["Ask questions", "Extract abbreviations"])
+mode = st.radio("Choose mode:", ["Enter your Question", "Extract abbreviations"])
 uploaded_file = st.file_uploader(
     "Upload a document",
     type=["pdf", "txt", "docx", "html"]
