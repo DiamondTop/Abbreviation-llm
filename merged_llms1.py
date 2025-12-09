@@ -1,6 +1,7 @@
 import streamlit as st
 from openai import OpenAI
 from pypdf import PdfReader
+import time
 
 # ---------------- CONFIG ----------------
 
@@ -25,27 +26,42 @@ NO_ABBREVIATIONS_FOUND
 # ---------------- FUNCTIONS ----------------
 
 def call_openai(text: str) -> str:
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        temperature=0,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": text}
-        ]
-    )
-    return response.choices[0].message.content.strip()
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": text}
+            ]
+        )
+        return response.choices[0].message.content.strip()
+
+    except Exception as e:
+        # Do NOT crash the app
+        st.warning(f"Skipped a chunk due to OpenAI error.")
+        return "NO_ABBREVIATIONS_FOUND"
 
 
 def extract_pdf_text(file):
     reader = PdfReader(file)
-    return "\n".join(page.extract_text() or "" for page in reader.pages)
+    pages = []
+    for page in reader.pages:
+        text = page.extract_text()
+        if text and len(text.strip()) > 50:  # skip junk pages
+            pages.append(text)
+    return "\n".join(pages)
 
 
-def chunk_text(text, max_chars=3000):
+def chunk_text(text, max_chars=1500):
     chunks = []
     current = ""
 
     for paragraph in text.split("\n"):
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+
         if len(current) + len(paragraph) <= max_chars:
             current += paragraph + "\n"
         else:
@@ -67,20 +83,22 @@ user_input = st.chat_input("Ask a question")
 
 # -------- PDF MODE --------
 if uploaded_pdf:
-    text = extract_pdf_text(uploaded_pdf)
-    chunks = chunk_text(text)
+    with st.spinner("Processing PDF..."):
+        text = extract_pdf_text(uploaded_pdf)
+        chunks = chunk_text(text)
 
-    results = []
+        results = []
 
-    for chunk in chunks:
-        r = call_openai(chunk)
-        if r != "NO_ABBREVIATIONS_FOUND":
-            results.append(r)
+        for chunk in chunks:
+            r = call_openai(chunk)
+            if r != "NO_ABBREVIATIONS_FOUND":
+                results.append(r)
+            time.sleep(0.3)  # rate-limit safety
 
-    if results:
-        result = "\n".join(sorted(set(results)))
-    else:
-        result = FALLBACK_RESPONSE
+        if results:
+            result = "\n".join(sorted(set(results)))
+        else:
+            result = FALLBACK_RESPONSE
 
     st.chat_message("assistant").markdown(result)
 
