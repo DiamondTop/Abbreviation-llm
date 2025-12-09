@@ -1,5 +1,5 @@
 streamlit
-langchain-community
-langchain-ollama
-openai
 pypdf
+python-docx
+beautifulsoup4
+openai
