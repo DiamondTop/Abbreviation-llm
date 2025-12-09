@@ -1,22 +1,61 @@
 import streamlit as st
-# Keep existing imports
+from openai import OpenAI
 from pypdf import PdfReader
 import time
-from openai import OpenAI # The library itself is used for OpenRouter too
 
 # ---------------- CONFIG ----------------
 
-# Configure the client to point to OpenRouter
 client = OpenAI(
     api_key=st.secrets["OPENROUTER_API_KEY"], 
     base_url="openrouter.ai"
 )
 
-# ... (rest of your existing FALLBACK_RESPONSE and SYSTEM_PROMPT remain the same) ...
+FALLBACK_RESPONSE = """I'm happy to play along.
+
+since the context is empty, i'll answer the question directly:
+I am an AI designed to simulate human-like conversations and provide information on a wide range of topics. I don't have personal experiences, emotions, or physical presence, but I'm here to help answer your questions and engage in discussions to the best of my abilities.
+"""
+
+SYSTEM_PROMPT = """
+You extract abbreviation indexes from academic articles.
+
+Return ONLY in this format:
+• ABBR: full term
+
+If no abbreviations are found, reply exactly:
+NO_ABBREVIATIONS_FOUND
+"""
 
 # ---------------- FUNCTIONS ----------------
 
-# Rename function to be model-agnostic
+def call_openai(text: str) -> str:
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": text}
+            ]
+        )
+        return response.choices[0].message.content.strip()
+
+    except Exception as e:
+        # Do NOT crash the app
+        st.warning(f"Skipped a chunk due to OpenAI error.")
+        return "NO_ABBREVIATIONS_FOUND"
+
+
+def extract_pdf_text(file):
+    reader = PdfReader(file)
+    pages = []
+    for page in reader.pages:
+        text = page.extract_text()
+        if text and len(text.strip()) > 50:  # skip junk pages
+            pages.append(text)
+    return "\n".join(pages)
+
+
 def call_llm(text: str) -> str:
     try:
         # We will use a free/cheap model offered via OpenRouter, e.g., 'mistralai/mistral-7b-instruct'
@@ -35,7 +74,26 @@ def call_llm(text: str) -> str:
         st.warning("Skipped a chunk due to LLM error.")
         return "NO_ABBREVIATIONS_FOUND"
 
-# ... (extract_pdf_text and chunk_text remain the same) ...
+def chunk_text(text, max_chars=1500):
+    chunks = []
+    current = ""
+
+    for paragraph in text.split("\n"):
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+
+        if len(current) + len(paragraph) <= max_chars:
+            current += paragraph + "\n"
+        else:
+            chunks.append(current)
+            current = paragraph + "\n"
+
+    if current.strip():
+        chunks.append(current)
+
+    return chunks
+
 
 # ---------------- STREAMLIT UI ----------------
 
@@ -55,10 +113,11 @@ if uploaded_pdf:
             st.stop() # Stop execution here
             
         chunks = chunk_text(text)
+
         results = []
 
         for chunk in chunks:
-            r = call_llm(chunk) # Use the new function name
+            r = call_openai(chunk)
             if r != "NO_ABBREVIATIONS_FOUND":
                 results.append(r)
             time.sleep(0.3)  # rate-limit safety
@@ -77,7 +136,7 @@ elif user_input:
     if len(user_input.split()) < 8:
         response = FALLBACK_RESPONSE
     else:
-        response = call_llm(user_input) # Use the new function name
+        response = call_openai(user_input)
         if response == "NO_ABBREVIATIONS_FOUND":
             response = FALLBACK_RESPONSE
 
