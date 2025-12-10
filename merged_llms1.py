@@ -33,21 +33,15 @@ else:
 # PROMPTS
 # ==============================
 
-CHAT_PROMPT = """
-You are a helpful AI assistant.
-Answer the user naturally and clearly.
-"""
-
-SUMMARY_PROMPT = """
-You are summarizing an academic article.
+ABBREVIATION_PROMPT = """
+Extract ALL abbreviations and their definitions from the text below.
 
 Rules:
-- Use ONLY information explicitly present in the text
-- Do NOT add generic academic commentary
-- Preserve technical terms and abbreviations
-- If content is unclear, say so
-
-Return a concise factual summary.
+- Only include abbreviations explicitly defined in the text
+- Use exact wording from the document
+- Format strictly as: ABBREVIATION = Full Term
+- One entry per line
+- Do NOT guess or hallucinate
 """
 
 QA_PROMPT = """
@@ -57,56 +51,58 @@ If the answer is not clearly present, reply exactly:
 "I don’t have enough information in the document to answer that."
 """
 
-FALLBACK_RESPONSE = """I'm happy to play along.
-
-since the context is empty, i'll answer the question directly:
-I am an AI designed to simulate human-like conversations and provide information on a wide range of topics. I don't have personal experiences, emotions, or physical presence, but I'm here to help answer your questions and engage in discussions to the best of my abilities.
+CHAT_PROMPT = """
+You are a helpful AI assistant.
+Answer the user naturally and clearly.
 """
 
+FALLBACK_RESPONSE = "I don’t have enough information to answer that."
+
 # ==============================
-# DOCUMENT EXTRACTION
+# DOCUMENT EXTRACTION (PAGE-BASED)
 # ==============================
 
-def extract_text(file):
+def extract_document_pages(file):
     ext = file.name.split(".")[-1].lower()
 
     if ext == "pdf":
         reader = PdfReader(file)
         pages = []
-        for page in reader.pages:
-            text = page.extract_text()
-            if text and len(text.strip()) > 100:
-                pages.append(text)
-        return "\n".join(pages)
+        for i, page in enumerate(reader.pages):
+            try:
+                text = page.extract_text()
+                if text and len(text.strip()) > 200:
+                    pages.append((i + 1, text))
+            except Exception:
+                continue
+        return pages
 
     elif ext == "txt":
-        return file.read().decode("utf-8", errors="ignore")
+        text = file.read().decode("utf-8", errors="ignore")
+        return [(1, text)]
 
     elif ext == "docx":
         doc = Document(file)
-        return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+        text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+        return [(1, text)]
 
     elif ext in ["html", "htm"]:
         soup = BeautifulSoup(file.read(), "html.parser")
-        return soup.get_text(separator="\n")
+        return [(1, soup.get_text(separator="\n"))]
 
-    else:
-        return ""
+    return []
 
 # ==============================
-# CHUNKING
+# PAGE-BASED CHUNKING ✅
 # ==============================
 
-def chunk_text(text, max_chars=1800):
-    chunks, current = [], ""
-    for line in text.split("\n"):
-        if len(current) + len(line) <= max_chars:
-            current += line + "\n"
-        else:
-            chunks.append(current)
-            current = line + "\n"
-    if current.strip():
-        chunks.append(current)
+def chunk_pages(pages, pages_per_chunk=3):
+    chunks = []
+    for i in range(0, len(pages), pages_per_chunk):
+        chunk = "\n".join(
+            f"[Page {p[0]}]\n{p[1]}" for p in pages[i:i + pages_per_chunk]
+        )
+        chunks.append(chunk)
     return chunks
 
 # ==============================
@@ -138,61 +134,78 @@ def call_llm(prompt, text):
         return ""
 
 # ==============================
+# MERGE + DEDUPLICATE ABBREVIATIONS
+# ==============================
+
+def merge_abbreviations(results):
+    abbrev = {}
+    for r in results:
+        for line in r.splitlines():
+            if "=" in line:
+                k, v = line.split("=", 1)
+                abbrev[k.strip()] = v.strip()
+    return dict(sorted(abbrev.items()))
+
+# ==============================
 # STREAMLIT UI
 # ==============================
 
-st.title("📄 Input to AI – Document Q&A (Open-source ↔ Gemini)")
+st.title("📘 Input to AI - Abbreviation Index Generator (Large PDF Safe)")
 
 uploaded_file = st.file_uploader(
-    "Upload a document (optional)",
+    "Upload a document",
     type=["pdf", "txt", "docx", "html"]
 )
 
-question = st.chat_input("Ask a question")
+question = st.chat_input("Enter your question (optional)")
 
 # ==============================
-# LOGIC FLOW
+# MAIN LOGIC
 # ==============================
 
-doc_summary = None
+abbrev_index = None
+document_text_for_qa = ""
 
-# ---- If document uploaded ----
 if uploaded_file:
-    text = extract_text(uploaded_file)
+    pages = extract_document_pages(uploaded_file)
 
-    if not text or len(text.strip()) < 500:
-        st.error("Unable to extract readable text from this document.")
-    else:
-        chunks = chunk_text(text)
+    if len(pages) < 3:
+        st.error("Unable to extract readable text. The document may be scanned.")
+        st.stop()
 
-        summaries = []
-        with st.spinner("Understanding document..."):
-            for c in chunks:
-                s = call_llm(SUMMARY_PROMPT, c)
-                if s:
-                    summaries.append(s)
-                time.sleep(0.2)
+    chunks = chunk_pages(pages, pages_per_chunk=3)
 
-        doc_summary = "\n".join(summaries)
+    results = []
+    with st.spinner("Extracting abbreviations (page-based chunking)..."):
+        for c in chunks:
+            r = call_llm(ABBREVIATION_PROMPT, c)
+            if r:
+                results.append(r)
+            time.sleep(0.3)
 
-# ---- Handle user question (WITH or WITHOUT document) ----
+    abbrev_index = merge_abbreviations(results)
+
+    st.subheader("📑 Abbreviation Index")
+    for k, v in abbrev_index.items():
+        st.markdown(f"**{k}** — {v}")
+
+    document_text_for_qa = "\n".join(v for v in abbrev_index.values())
+
+# ==============================
+# QUESTION HANDLING
+# ==============================
+
 if question:
     st.chat_message("user").markdown(question)
 
-    if doc_summary:
+    if uploaded_file:
         answer = call_llm(
             QA_PROMPT,
-            f"Document content:\n{doc_summary}\n\nQuestion:\n{question}"
+            f"Document content:\n{document_text_for_qa}\n\nQuestion:\n{question}"
         )
-        st.chat_message("assistant").markdown(
-            answer if answer else FALLBACK_RESPONSE
-        )
-
     else:
-        # CHAT MODE (no document uploaded)
         answer = call_llm(CHAT_PROMPT, question)
-        st.chat_message("assistant").markdown(
-            answer if answer else FALLBACK_RESPONSE
-        )
 
-
+    st.chat_message("assistant").markdown(
+        answer if answer else FALLBACK_RESPONSE
+    )
