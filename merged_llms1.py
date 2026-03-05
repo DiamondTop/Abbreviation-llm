@@ -24,7 +24,8 @@ if PROVIDER == "Open-source (Mistral)":
         api_key=st.secrets["OPENROUTER_API_KEY"],
         base_url="https://openrouter.ai/api/v1"
     )
-    MODEL_NAME = "mistralai/mistral-7b-instruct"
+    MODEL_NAME = "mistralai/mistral-7b-instruct:free" #updated here#
+    
 else:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     gemini_model = genai.GenerativeModel("gemini-2.5-flash")
@@ -209,3 +210,4 @@ if question:
     st.chat_message("assistant").markdown(
         answer if answer else FALLBACK_RESPONSE
     )
+
