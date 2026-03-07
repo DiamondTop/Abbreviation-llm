@@ -24,7 +24,7 @@ if PROVIDER == "Open-source (Meta-llama)":
         api_key=st.secrets["OPENROUTER_API_KEY"],
         base_url="https://openrouter.ai/api/v1"
     )
-     MODEL_NAME = "meta-llama/llama-3-8b-instruct"
+    MODEL_NAME = "meta-llama/llama-3-8b-instruct"
 
 
     
