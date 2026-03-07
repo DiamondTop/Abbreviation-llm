@@ -24,7 +24,7 @@ if PROVIDER == "Open-source (Meta-llama)":
         api_key=st.secrets["OPENROUTER_API_KEY"],
         base_url="https://openrouter.ai/api/v1"
     )
-    MODEL_NAME = "meta-llama/llama-3-8b-instruct"
+   MODEL_NAME = "mistralai/mistral-7b-instruct:free" #updated here#
 
 
     
@@ -114,7 +114,7 @@ def chunk_pages(pages, pages_per_chunk=3):
 
 def call_llm(prompt, text):
     try:
-        if PROVIDER == "Open-source (Mistral)":
+        if PROVIDER == "Open-source (Meta-llama)":
             r = client.chat.completions.create(
                 model=MODEL_NAME,
                 temperature=0,
@@ -212,6 +212,7 @@ if question:
     st.chat_message("assistant").markdown(
         answer if answer else FALLBACK_RESPONSE
     )
+
 
 
 
