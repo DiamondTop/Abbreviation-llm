@@ -16,7 +16,7 @@ anthropic_client = anthropic.Anthropic(
 )
 
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+gemini_model = genai.GenerativeModel("gemini-2.0-flash")
 
 openrouter_client = OpenAI(
     api_key=st.secrets["OPENROUTER_API_KEY"],
@@ -95,3 +95,4 @@ if question:
     with col4:
         st.subheader("Open-source (Llama)")
         st.write(ask_mistral(question))
+
