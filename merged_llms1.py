@@ -12,25 +12,33 @@ import google.generativeai as genai
 
 PROVIDER = st.selectbox(
     "🤖Choose LLM:",
-    ["Open-source (Meta-llama)", "Closed-source (Gemini)"]
+    ["Open-source (Meta-llama)", "Open-source (Gemma 2 27B)", "Closed-source (Gemini)"]
 )
+
+
 
 # ==============================
 # CLIENT SETUP
 # ==============================
-
 if PROVIDER == "Open-source (Meta-llama)":
     client = OpenAI(
         api_key=st.secrets["OPENROUTER_API_KEY"],
         base_url="https://openrouter.ai/api/v1"
     )
-    #MODEL_NAME = "mistralai/mistral-7b-instruct:free" #updated here#
     MODEL_NAME = "meta-llama/llama-3-8b-instruct"
 
-    
+elif PROVIDER == "Open-source (Gemma 2 27B)":
+    client = OpenAI(
+        api_key=st.secrets["OPENROUTER_API_KEY"],
+        base_url="https://openrouter.ai/api/v1"
+    )
+    MODEL_NAME = "google/gemma-2-27b-it:free"
+
 else:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     gemini_model = genai.GenerativeModel("gemini-2.5-flash")
+
+
 
 # ==============================
 # PROMPTS
@@ -212,6 +220,7 @@ if question:
     st.chat_message("assistant").markdown(
         answer if answer else FALLBACK_RESPONSE
     )
+
 
 
 
