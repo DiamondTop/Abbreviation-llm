@@ -39,7 +39,8 @@ if PROVIDER == "Open-source (Meta-llama)":
     MODEL_NAME = "meta-llama/llama-3-8b-instruct"
 elif PROVIDER == "Open-source (Gemma 2 27B)":
     client = OpenAI(api_key=st.secrets["OPENROUTER_API_KEY"], base_url="https://openrouter.ai/api/v1")
-    MODEL_NAME = "google/gemma-2-27b-it:free"
+    #MODEL_NAME = "google/gemma-2-27b-it:free"
+    MODEL_NAME = "qwen/qwen-2.5-72b-instruct:free"
 else:
     # Gemini logic (Untouched)
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -144,3 +145,4 @@ if st.button("🚀 Run Analysis", type="primary"):
                 st.markdown(display_text)
                 
                 st.download_button("💾 Download Edits", display_text, file_name="resume_analysis.txt")
+
