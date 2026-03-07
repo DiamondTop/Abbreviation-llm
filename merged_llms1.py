@@ -152,7 +152,7 @@ def merge_abbreviations(results):
 # STREAMLIT UI
 # ==============================
 
-st.title( 🤖Input to AI - Abbreviation Index Generator (Large PDF Safe)")
+st.title( "🤖Input to AI - Abbreviation Index Generator (Large PDF Safe)")
 
 uploaded_file = st.file_uploader(
     "Upload a document",
@@ -211,5 +211,6 @@ if question:
     st.chat_message("assistant").markdown(
         answer if answer else FALLBACK_RESPONSE
     )
+
 
 
