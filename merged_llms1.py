@@ -38,7 +38,7 @@ with st.sidebar:
 # Create a mapping for OpenRouter models
 model_map = {
     "Step-3.5-Flash (StepFun - Recommended)": "stepfun/step-3.5-flash:free",
-    "Meta Llama 3.3 70B (OpenRouter)": "meta-llama/llama-3.1-8b-instruct:free" #updated here
+    "Meta Llama 3.3 70B (OpenRouter)": "meta-llama/llama-3-8b-instruct" #updated here
 }
 
 if "Gemini" not in PROVIDER:
@@ -150,4 +150,5 @@ if st.button("🚀 Run Analysis", type="primary"):
                 st.subheader("📋 Recommendations")
                 st.markdown(display_text)
                 st.download_button("💾 Download Edits", display_text, file_name="resume_analysis.txt")
+
 
