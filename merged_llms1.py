@@ -28,7 +28,7 @@ with st.sidebar:
     st.header("Settings")
     PROVIDER = st.selectbox(
         "🤖 Choose LLM Engine:",
-        ["Open-source (Meta-llama)", "Open-source (Gemma 2 27B)", "Closed-source (Gemini)"]
+        ["Open-source (Meta-llama)", "Open-source (Stepfun step 3.5)", "Closed-source (Gemini)"]
     )
 
 # ==============================
@@ -37,7 +37,7 @@ with st.sidebar:
 if PROVIDER == "Open-source (Meta-llama)":
     client = OpenAI(api_key=st.secrets["OPENROUTER_API_KEY"], base_url="https://openrouter.ai/api/v1")
     MODEL_NAME = "meta-llama/llama-3-8b-instruct"
-elif PROVIDER == "Open-source (Gemma 2 27B)":
+elif PROVIDER == "Open-source (Stepfun step 3.5)":
     client = OpenAI(api_key=st.secrets["OPENROUTER_API_KEY"], base_url="https://openrouter.ai/api/v1")
     #MODEL_NAME = "google/gemma-2-27b-it:free"
     #MODEL_NAME = "qwen/qwen-2.5-72b-instruct:free"
@@ -147,6 +147,7 @@ if st.button("🚀 Run Analysis", type="primary"):
                 st.markdown(display_text)
                 
                 st.download_button("💾 Download Edits", display_text, file_name="resume_analysis.txt")
+
 
 
 
