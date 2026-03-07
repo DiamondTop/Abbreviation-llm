@@ -41,7 +41,8 @@ elif PROVIDER == "Open-source (Gemma 2 27B)":
     client = OpenAI(api_key=st.secrets["OPENROUTER_API_KEY"], base_url="https://openrouter.ai/api/v1")
     #MODEL_NAME = "google/gemma-2-27b-it:free"
     #MODEL_NAME = "qwen/qwen-2.5-72b-instruct:free"
-    MODEL_NAME = "deepseek/deepseek-chat:free"
+    #MODEL_NAME = "deepseek/deepseek-chat:free"
+    MODEL_NAME = "microsoft/phi-3-medium-128k-instruct:free"
 else:
     # Gemini logic (Untouched)
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -146,5 +147,6 @@ if st.button("🚀 Run Analysis", type="primary"):
                 st.markdown(display_text)
                 
                 st.download_button("💾 Download Edits", display_text, file_name="resume_analysis.txt")
+
 
 
