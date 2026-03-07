@@ -21,20 +21,33 @@ def get_score_color(score):
 # ==============================
 with st.sidebar:
     st.header("Settings")
+    # ADDED Meta Llama TO THE LIST BELOW
     PROVIDER = st.selectbox(
         "🤖 Choose LLM Engine:",
-        ["Step-3.5-Flash (StepFun - Recommended)", "Closed-source (Gemini)"]
+        [
+            "Step-3.5-Flash (StepFun - Recommended)", 
+            "Meta Llama 3.3 70B (OpenRouter)", 
+            "Closed-source (Gemini)"
+        ]
     )
 
 # ==============================
 # CLIENT SETUP
 # ==============================
-if PROVIDER == "Step-3.5-Flash (StepFun - Recommended)":
+
+# Create a mapping for OpenRouter models
+model_map = {
+    "Step-3.5-Flash (StepFun - Recommended)": "stepfun/step-3.5-flash:free",
+    "Meta Llama 3.3 70B (OpenRouter)": "meta-llama/llama-3.3-70b-instruct:free"
+}
+
+if "Gemini" not in PROVIDER:
     client = OpenAI(
         api_key=st.secrets["OPENROUTER_API_KEY"], 
         base_url="https://openrouter.ai/api/v1"
     )
-    MODEL_NAME = "stepfun/step-3.5-flash:free"
+    # Set the MODEL_NAME based on the selection
+    MODEL_NAME = model_map.get(PROVIDER)
 else:
     # Your Gemini logic (gemini-3-flash)
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -58,7 +71,8 @@ def extract_text(file):
 def call_llm(system_task, user_content):
     scoring_instruction = "\n\nCRITICAL: You must begin your response with 'MATCH_SCORE: [number]' (0-100) based on how well the resume fits the job description, followed by your analysis."
     try:
-        if "Step-3.5" in PROVIDER:
+        # UPDATED logic to handle all OpenRouter options
+        if "Gemini" not in PROVIDER:
             r = client.chat.completions.create(
                 model=MODEL_NAME, 
                 temperature=0.4,
@@ -88,7 +102,7 @@ with col2:
 
 st.divider()
 
-# PROMPT OPTIONS - ALL 4 INCLUDED
+# PROMPT OPTIONS
 prompt_options = {
     "ATS Keyword Optimization": "Analyze the Job Description for top keywords and modify my resume bullet points to include them naturally.",
     "STAR Method Bullet Point Rewrite": "Rewrite my work experience bullet points using the STAR method (Situation, Task, Action, Result). Focus on quantifiable achievements.",
