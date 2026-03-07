@@ -64,7 +64,7 @@ def ask_gemini(q):
 def ask_mistral(q):
     try:
         r = openrouter_client.chat.completions.create(
-            model="meta-llama/llama-3-8b-instruct:free",
+            MODEL = "mistralai/mistral-7b-instruct",
             messages=[{"role": "user", "content": q}],
             temperature=0
         )
@@ -95,4 +95,5 @@ if question:
     with col4:
         st.subheader("Open-source (Llama)")
         st.write(ask_mistral(question))
+
 
