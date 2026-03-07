@@ -38,7 +38,7 @@ with st.sidebar:
 # Create a mapping for OpenRouter models
 model_map = {
     "Step-3.5-Flash (StepFun - Recommended)": "stepfun/step-3.5-flash:free",
-    "Meta Llama 3.3 70B (OpenRouter)": "meta-llama/llama-3-8b-instruct" #updated here
+    "Meta Llama via Meta/facebook (OpenRouter)": "meta-llama/llama-3-8b-instruct" #updated here
 }
 
 if "Gemini" not in PROVIDER:
@@ -49,9 +49,10 @@ if "Gemini" not in PROVIDER:
     # Set the MODEL_NAME based on the selection
     MODEL_NAME = model_map.get(PROVIDER)
 else:
-    # Your Gemini logic (gemini-3-flash)
+    # Your Gemini logic (gemini-via google)
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    gemini_model = genai.GenerativeModel("gemini-3-flash")
+    #gemini_model = genai.GenerativeModel("gemini-3-flash")
+    gemini_model = genai.GenerativeModel("gemini-2.5-flash")
 
 # ==============================
 # HELPERS
@@ -150,5 +151,6 @@ if st.button("🚀 Run Analysis", type="primary"):
                 st.subheader("📋 Recommendations")
                 st.markdown(display_text)
                 st.download_button("💾 Download Edits", display_text, file_name="resume_analysis.txt")
+
 
 
