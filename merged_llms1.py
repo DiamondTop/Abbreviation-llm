@@ -26,8 +26,8 @@ with st.sidebar:
         "🤖 Choose LLM Engine:",
         [
             "Step-3.5-Flash (StepFun - Recommended)", 
-            "Meta Llama 3.3 70B (OpenRouter)", 
-            "Closed-source (Gemini)"
+            "Meta Llama via Meta/Facebook", 
+            "Closed-source (Gemini) via Google"
         ]
     )
 
@@ -151,6 +151,7 @@ if st.button("🚀 Run Analysis", type="primary"):
                 st.subheader("📋 Recommendations")
                 st.markdown(display_text)
                 st.download_button("💾 Download Edits", display_text, file_name="resume_analysis.txt")
+
 
 
 
