@@ -26,7 +26,8 @@ if PROVIDER == "Open-source (Mistral)":
     )
     #MODEL_NAME = "mistralai/mistral-7b-instruct" 
     #MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2" #updated here#
-    MODEL_NAME = "mistralai/mistral-7b-instruct:free"
+    #MODEL_NAME = "mistralai/mistral-7b-instruct:free"
+    MODEL_NAME = "openchat/openchat-7b:free"
     
 else:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -212,6 +213,7 @@ if question:
     st.chat_message("assistant").markdown(
         answer if answer else FALLBACK_RESPONSE
     )
+
 
 
 
