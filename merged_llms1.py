@@ -27,46 +27,50 @@ openrouter_client = OpenAI(
 
 question = st.text_input("Ask a question")
 
-# ---------------- LLM CALL FUNCTIONS ----------------
+# ---------------- LLM FUNCTIONS ----------------
 
 def ask_chatgpt(q):
-
-    r = openai_client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role":"user","content":q}],
-        temperature=0
-    )
-
-    return r.choices[0].message.content
+    try:
+        r = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": q}],
+            temperature=0
+        )
+        return r.choices[0].message.content
+    except Exception as e:
+        return f"❌ ChatGPT error: {e}"
 
 
 def ask_claude(q):
-
-    r = anthropic_client.messages.create(
-        model="claude-3-haiku-20240307",
-        max_tokens=800,
-        messages=[{"role":"user","content":q}]
-    )
-
-    return r.content[0].text
+    try:
+        r = anthropic_client.messages.create(
+            model="claude-3-haiku-20240307",
+            max_tokens=800,
+            messages=[{"role": "user", "content": q}]
+        )
+        return r.content[0].text
+    except Exception as e:
+        return f"❌ Claude error: {e}"
 
 
 def ask_gemini(q):
-
-    r = gemini_model.generate_content(q)
-
-    return r.text
+    try:
+        r = gemini_model.generate_content(q)
+        return r.text
+    except Exception as e:
+        return f"❌ Gemini error: {e}"
 
 
 def ask_mistral(q):
-
-    r = openrouter_client.chat.completions.create(
-        model="meta-llama/llama-3-8b-instruct:free",
-        messages=[{"role":"user","content":q}],
-        temperature=0
-    )
-
-    return r.choices[0].message.content
+    try:
+        r = openrouter_client.chat.completions.create(
+            model="meta-llama/llama-3-8b-instruct:free",
+            messages=[{"role": "user", "content": q}],
+            temperature=0
+        )
+        return r.choices[0].message.content
+    except Exception as e:
+        return f"❌ Open-source model error: {e}"
 
 
 # ---------------- RUN MODELS ----------------
