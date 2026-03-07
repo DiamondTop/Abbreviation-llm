@@ -55,10 +55,26 @@ def extract_text(file):
         return "\n".join(p.text for p in Document(file).paragraphs)
     return file.read().decode("utf-8")
 
+
+
+
 def call_llm(system_prompt, user_content):
     scoring_instruction = "\n\nCRITICAL: You must begin your response with 'MATCH_SCORE: [number]' (0-100) based on how well the resume fits the job description, followed by your analysis."
     try:
         if "Open-source" in PROVIDER:
             r = client.chat.completions.create(
-                model=MODEL_NAME, temperature=0.4,
-                messages=[{"role": "system", "content": system_task + scoring_instruction}, {"role": "user", "
+                model=MODEL_NAME, 
+                temperature=0.4,
+                messages=[
+                    {"role": "system", "content": system_task + scoring_instruction}, 
+                    {"role": "user", "content": user_content}
+                ]
+            )
+            return r.choices[0].message.content.strip()
+        else:
+            # This handles your Gemini logic
+            r = gemini_model.generate_content(f"{system_task}{scoring_instruction}\n\n{user_content}")
+            return r.text.strip()
+    except Exception as e:
+        st.error(f"Error: {e}")
+        return ""
