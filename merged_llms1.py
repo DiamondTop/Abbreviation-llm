@@ -25,7 +25,7 @@ if PROVIDER == "Open-source (Mistral)":
         base_url="https://openrouter.ai/api/v1"
     )
     #MODEL_NAME = "mistralai/mistral-7b-instruct" 
-    MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.3" #updated here#
+    MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2" #updated here#
     
     
 else:
@@ -212,6 +212,7 @@ if question:
     st.chat_message("assistant").markdown(
         answer if answer else FALLBACK_RESPONSE
     )
+
 
 
 
