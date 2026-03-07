@@ -10,16 +10,19 @@ import google.generativeai as genai
 # PROVIDER SWITCH
 # ==============================
 
-PROVIDER = st.selectbox(
-    "🤖Choose LLM:",
-    ["Open-source (Meta-llama)", "Open-source (Gemma 2 27B)", "Closed-source (Gemini)"]
-)
+st.set_page_config(page_title="AI Resume Intelligence", layout="wide")
 
-
+with st.sidebar:
+    st.header("Settings")
+    PROVIDER = st.selectbox(
+        "🤖 Choose LLM Engine:",
+        ["Open-source (Meta-llama)", "Open-source (Gemma 2 27B)", "Closed-source (Gemini)"]
+    )
 
 # ==============================
 # CLIENT SETUP
 # ==============================
+
 if PROVIDER == "Open-source (Meta-llama)":
     client = OpenAI(
         api_key=st.secrets["OPENROUTER_API_KEY"],
@@ -35,201 +38,116 @@ elif PROVIDER == "Open-source (Gemma 2 27B)":
     MODEL_NAME = "google/gemma-2-27b-it:free"
 
 else:
+    # Use your existing Gemini config
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     gemini_model = genai.GenerativeModel("gemini-2.5-flash")
 
-
-
 # ==============================
-# PROMPTS
+# DOCUMENT EXTRACTION
 # ==============================
 
-ABBREVIATION_PROMPT = """
-Extract ALL abbreviations and their definitions from the text below.
-
-Rules:
-- Only include abbreviations explicitly defined in the text
-- Use exact wording from the document
-- Format strictly as: ABBREVIATION = Full Term
-- One entry per line
-- Do NOT guess or hallucinate
-"""
-
-QA_PROMPT = """
-Answer the question using ONLY the document content below.
-
-If the answer is not clearly present, reply exactly:
-"I don't have enough information in the document to answer that."
-"""
-
-CHAT_PROMPT = """
-You are a helpful AI assistant.
-Answer the user naturally and clearly.
-"""
-
-FALLBACK_RESPONSE = "I don't have enough information to answer that."
-
-# ==============================
-# DOCUMENT EXTRACTION (PAGE-BASED)
-# ==============================
-
-def extract_document_pages(file):
+def extract_text(file):
     ext = file.name.split(".")[-1].lower()
-
     if ext == "pdf":
         reader = PdfReader(file)
-        pages = []
-        for i, page in enumerate(reader.pages):
-            try:
-                text = page.extract_text()
-                if text and len(text.strip()) > 200:
-                    pages.append((i + 1, text))
-            except Exception:
-                continue
-        return pages
-
-    elif ext == "txt":
-        text = file.read().decode("utf-8", errors="ignore")
-        return [(1, text)]
-
+        return "\n".join(page.extract_text() for page in reader.pages)
     elif ext == "docx":
         doc = Document(file)
-        text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
-        return [(1, text)]
-
-    elif ext in ["html", "htm"]:
-        soup = BeautifulSoup(file.read(), "html.parser")
-        return [(1, soup.get_text(separator="\n"))]
-
-    return []
-
-# ==============================
-# PAGE-BASED CHUNKING 
-# ==============================
-
-def chunk_pages(pages, pages_per_chunk=3):
-    chunks = []
-    for i in range(0, len(pages), pages_per_chunk):
-        chunk = "\n".join(
-            f"[Page {p[0]}]\n{p[1]}" for p in pages[i:i + pages_per_chunk]
-        )
-        chunks.append(chunk)
-    return chunks
+        return "\n".join(p.text for p in doc.paragraphs)
+    elif ext == "txt":
+        return file.read().decode("utf-8")
+    return ""
 
 # ==============================
 # LLM CALL
 # ==============================
 
-def call_llm(prompt, text):
+def call_llm(system_prompt, user_content):
     try:
-        if PROVIDER == "Open-source (Meta-llama)":
+        if "Open-source" in PROVIDER:
             r = client.chat.completions.create(
                 model=MODEL_NAME,
-                temperature=0,
+                temperature=0.4,
                 messages=[
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": text}
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
                 ]
             )
             return r.choices[0].message.content.strip()
-
         else:
-            r = gemini_model.generate_content(
-                f"{prompt}\n\n{text}",
-                generation_config={"temperature": 0}
-            )
+            r = gemini_model.generate_content(f"{system_prompt}\n\n{user_content}")
             return r.text.strip()
-
     except Exception as e:
-        st.warning(f"LLM error: {e}")
+        st.error(f"Error: {e}")
         return ""
-
-# ==============================
-# MERGE + DEDUPLICATE ABBREVIATIONS
-# ==============================
-
-def merge_abbreviations(results):
-    abbrev = {}
-    for r in results:
-        for line in r.splitlines():
-            if "=" in line:
-                k, v = line.split("=", 1)
-                abbrev[k.strip()] = v.strip()
-    return dict(sorted(abbrev.items()))
 
 # ==============================
 # STREAMLIT UI
 # ==============================
 
-st.title( "🤖Input to AI - Abbreviation Index Generator (Large PDF Safe)")
+st.title("💼 AI Resume Architect & Job Matcher")
+st.markdown("Tailor your resume, optimize for ATS, and improve your professional narrative.")
 
-uploaded_file = st.file_uploader(
-    "Upload a document",
-    type=["pdf", "txt", "docx", "html"]
-)
+col1, col2 = st.columns(2)
 
-question = st.chat_input("Enter your question (optional)")
+with col1:
+    st.subheader("1. Upload Resume")
+    resume_file = st.file_uploader("Upload PDF or DOCX", type=["pdf", "docx", "txt"])
+    
+with col2:
+    st.subheader("2. Target Job Description")
+    job_desc = st.text_area("Paste the job posting here...", height=200)
+
+st.divider()
+
+st.subheader("3. Select Your Strategy")
+prompt_options = {
+    "ATS Keyword Optimization": "Analyze the Job Description for top keywords and modify my resume bullet points to include them naturally while maintaining truthfulness.",
+    "STAR Method Bullet Point Rewrite": "Rewrite my work experience bullet points using the STAR method (Situation, Task, Action, Result). Focus on quantifiable achievements and metrics.",
+    "Professional Summary Rewrite": "Draft a compelling 3-4 sentence professional summary that bridges my current experience with the requirements of this specific job.",
+    "Skills Gap Analysis": "Compare my resume against the job description. Identify exactly what skills I am missing and suggest how I can reframe my existing experience to fill those gaps."
+}
+
+selected_strategy = st.selectbox("Choose a goal:", list(prompt_options.keys()))
+custom_instructions = st.text_area("Additional custom instructions (optional):", 
+                                  placeholder="e.g., 'Make it sound more executive' or 'Highlight my logistics background'")
 
 # ==============================
 # MAIN LOGIC
 # ==============================
 
-abbrev_index = None
-document_text_for_qa = ""
-
-if uploaded_file:
-    pages = extract_document_pages(uploaded_file)
-
-    if len(pages) < 3:
-        st.error("Unable to extract readable text. The document may be scanned.")
-        st.stop()
-
-    chunks = chunk_pages(pages, pages_per_chunk=3)
-
-    results = []
-    with st.spinner("Extracting abbreviations (page-based chunking)..."):
-        for c in chunks:
-            r = call_llm(ABBREVIATION_PROMPT, c)
-            if r:
-                results.append(r)
-            time.sleep(0.3)
-
-    abbrev_index = merge_abbreviations(results)
-
-    st.subheader("Abbreviation Index")
-    for k, v in abbrev_index.items():
-        st.markdown(f"**{k}** — {v}")
-
-    document_text_for_qa = "\n".join(v for v in abbrev_index.values())
-
-# ==============================
-# QUESTION HANDLING
-# ==============================
-
-if question:
-    st.chat_message("user").markdown(question)
-
-    if uploaded_file:
-        answer = call_llm(
-            QA_PROMPT,
-            f"Document content:\n{document_text_for_qa}\n\nQuestion:\n{question}"
-        )
+if st.button("🚀 Run Analysis", type="primary"):
+    if not resume_file:
+        st.warning("Please upload a resume first.")
     else:
-        answer = call_llm(CHAT_PROMPT, question)
+        resume_text = extract_text(resume_file)
+        
+        # Build the final prompt context
+        system_task = prompt_options[selected_strategy]
+        if custom_instructions:
+            system_task += f" Additional requirements: {custom_instructions}"
+            
+        full_user_input = f"""
+        TARGET JOB DESCRIPTION:
+        {job_desc if job_desc else 'No job description provided.'}
+        
+        MY CURRENT RESUME:
+        {resume_text}
+        """
+        
+        with st.spinner(f"Analyzing with {PROVIDER}..."):
+            result = call_llm(system_task, full_user_input)
+            
+            if result:
+                st.success("Analysis Complete!")
+                st.markdown("### 📋 Recommendations & Edits")
+                st.markdown(result)
+                
+                # Option to download the advice
+                st.download_button("Download Advice as Text", result, file_name="resume_edits.txt")
 
-    st.chat_message("assistant").markdown(
-        answer if answer else FALLBACK_RESPONSE
-    )
-
-
-
-
-
-
-
-
-
-
-
-
-
+# ==============================
+# CHAT-ONLY (IF NO UPLOAD)
+# ==============================
+if not resume_file:
+    st.info("💡 Pro-Tip: Once you upload a resume, I can provide specific rewrites. For now, you can ask general career questions in the sidebar settings.")
