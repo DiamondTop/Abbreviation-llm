@@ -24,7 +24,8 @@ if PROVIDER == "Open-source (Mistral)":
         api_key=st.secrets["OPENROUTER_API_KEY"],
         base_url="https://openrouter.ai/api/v1"
     )
-    MODEL_NAME = "mistralai/mistral-7b-instruct:free" #updated here#
+    MODEL_NAME = "mistralai/mistral-7b-instruct" #updated here#
+    
     
 else:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -49,7 +50,7 @@ QA_PROMPT = """
 Answer the question using ONLY the document content below.
 
 If the answer is not clearly present, reply exactly:
-"I donâ€™t have enough information in the document to answer that."
+"I don't have enough information in the document to answer that."
 """
 
 CHAT_PROMPT = """
@@ -57,7 +58,7 @@ You are a helpful AI assistant.
 Answer the user naturally and clearly.
 """
 
-FALLBACK_RESPONSE = "I donâ€™t have enough information to answer that."
+FALLBACK_RESPONSE = "I don't have enough information to answer that."
 
 # ==============================
 # DOCUMENT EXTRACTION (PAGE-BASED)
@@ -94,7 +95,7 @@ def extract_document_pages(file):
     return []
 
 # ==============================
-# PAGE-BASED CHUNKING âœ…
+# PAGE-BASED CHUNKING 
 # ==============================
 
 def chunk_pages(pages, pages_per_chunk=3):
@@ -151,7 +152,7 @@ def merge_abbreviations(results):
 # STREAMLIT UI
 # ==============================
 
-st.title("ðŸ“˜ Input to AI - Abbreviation Index Generator (Large PDF Safe)")
+st.title( 🤖Input to AI - Abbreviation Index Generator (Large PDF Safe)")
 
 uploaded_file = st.file_uploader(
     "Upload a document",
@@ -186,7 +187,7 @@ if uploaded_file:
 
     abbrev_index = merge_abbreviations(results)
 
-    st.subheader("ðŸ“‘ Abbreviation Index")
+    st.subheader("Abbreviation Index")
     for k, v in abbrev_index.items():
         st.markdown(f"**{k}** â€” {v}")
 
@@ -210,4 +211,5 @@ if question:
     st.chat_message("assistant").markdown(
         answer if answer else FALLBACK_RESPONSE
     )
+
 
