@@ -358,7 +358,35 @@ with st.sidebar:
             "Closed-source (Gemini) via Google"
         ]
     )
-
+    st.markdown("""
+    <style>
+    /* Hide the sidebar toggle button entirely */
+    [data-testid="stSidebarCollapseButton"] {
+        display: none !important;
+    }
+    </style>
+    
+    <script>
+    // Strip the tooltip title attribute that causes "keyboard_doc" to appear
+    const removeTitles = () => {
+        document.querySelectorAll('[data-testid="stSidebarCollapseButton"]').forEach(btn => {
+            btn.removeAttribute('title');
+            btn.removeAttribute('aria-label');
+            btn.style.display = 'none';
+        });
+        // Also catch the parent wrapper
+        document.querySelectorAll('button[kind="header"]').forEach(btn => {
+            btn.removeAttribute('title');
+            btn.style.display = 'none';
+        });
+    };
+    
+    // Run immediately and after Streamlit re-renders
+    removeTitles();
+    const observer = new MutationObserver(removeTitles);
+    observer.observe(document.body, { childList: true, subtree: true });
+    </script>
+    """, unsafe_allow_html=True)
     st.markdown("""
     <div style="margin-top:1.8rem; padding:1.2rem; background:#0b0c0f;
                 border:1px solid rgba(201,168,76,0.18); border-radius:4px;">
