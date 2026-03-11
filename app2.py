@@ -150,7 +150,7 @@ def get_llm_response(prompt, provider):
 # ==============================
 with st.sidebar:
     st.markdown("### ✦ Settings")
-    PROVIDER = st.selectbox("Reasoning Engine", ["DeepSeek R1 (Reasoning Expert)", "OpenAI o1-mini (Logic Focused)", "Gemini 2.0 Flash"])
+    PROVIDER = st.selectbox("Reasoning Engine", ["Metal-llama (Reasoning Expert)", "OpenAI o1-mini (Logic Focused)", "Gemini 2.0 Flash"])
     st.markdown("---")
     st.markdown("**Attach Context Files**")
     uploaded_files = st.file_uploader("Upload files", type=["pdf", "docx", "txt", "png", "jpg", "jpeg", "xlsx", "xls", "csv"], accept_multiple_files=True, label_visibility="collapsed")
