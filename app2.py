@@ -176,93 +176,6 @@ hr { border: none !important; border-top: 1px solid var(--border) !important; ma
     background: linear-gradient(90deg, var(--gold), transparent); border-radius: 6px 6px 0 0;
 }
 
-/* ── VIBRANT ANALYTICS PANEL ── */
-.analytics-panel {
-    margin-top: 1.6rem;
-    border-radius: 6px;
-    overflow: hidden;
-    border: 1px solid rgba(201,168,76,0.25);
-}
-.analytics-header {
-    background: linear-gradient(135deg, #1a160a 0%, #0f1118 100%);
-    padding: 0.9rem 1.1rem 0.8rem;
-    border-bottom: 1px solid rgba(201,168,76,0.2);
-    display: flex; align-items: center; gap: 0.5rem;
-}
-.analytics-header-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: #c9a84c;
-    box-shadow: 0 0 8px rgba(201,168,76,0.8);
-    animation: pulse-dot 2s ease-in-out infinite;
-}
-@keyframes pulse-dot {
-    0%,100% { opacity:1; box-shadow:0 0 8px rgba(201,168,76,0.8); }
-    50%      { opacity:0.5; box-shadow:0 0 3px rgba(201,168,76,0.3); }
-}
-.analytics-header-title {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.62rem; letter-spacing: 0.2em;
-    text-transform: uppercase; color: #c9a84c; font-weight: 500;
-}
-.analytics-body { background: #0d0e12; padding: 1rem 1.1rem; }
-
-/* Stat cards row */
-.stat-cards {
-    display: grid; grid-template-columns: 1fr 1fr 1fr;
-    gap: 0.5rem; margin-bottom: 1rem;
-}
-.stat-card {
-    border-radius: 5px; padding: 0.6rem 0.5rem; text-align: center;
-    border: 1px solid;
-}
-.stat-card.visitors {
-    background: rgba(99,179,237,0.08);
-    border-color: rgba(99,179,237,0.25);
-}
-.stat-card.runs {
-    background: rgba(154,230,180,0.07);
-    border-color: rgba(154,230,180,0.22);
-}
-.stat-card.covers {
-    background: rgba(201,168,76,0.08);
-    border-color: rgba(201,168,76,0.22);
-}
-.stat-num {
-    font-family: 'DM Mono', monospace;
-    font-size: 1.3rem; font-weight: 500; line-height: 1.1;
-    display: block; margin-bottom: 0.15rem;
-}
-.stat-num.blue  { color: #63b3ed; }
-.stat-num.green { color: #68d391; }
-.stat-num.gold  { color: #c9a84c; }
-.stat-lbl {
-    font-size: 0.58rem; letter-spacing: 0.1em;
-    text-transform: uppercase; color: #6a6560;
-    font-family: 'DM Mono', monospace;
-}
-
-/* Goal breakdown */
-.goal-section-title {
-    font-family: 'DM Mono', monospace; font-size: 0.58rem;
-    letter-spacing: 0.16em; text-transform: uppercase;
-    color: #4a4845; margin-bottom: 0.65rem;
-    padding-top: 0.3rem;
-    border-top: 1px solid rgba(255,255,255,0.04);
-    padding-top: 0.75rem;
-}
-.goal-row { margin-bottom: 0.65rem; }
-.goal-row-top {
-    display: flex; justify-content: space-between; align-items: baseline;
-    margin-bottom: 0.3rem;
-}
-.goal-name  { font-size: 0.73rem; color: #b0aa9f; }
-.goal-count { font-family: 'DM Mono', monospace; font-size: 0.72rem; font-weight: 500; }
-.goal-track {
-    height: 5px; border-radius: 3px;
-    background: rgba(255,255,255,0.05); overflow: hidden;
-}
-.goal-fill  { height: 5px; border-radius: 3px; transition: width 0.8s ease; }
-
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -425,64 +338,102 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── ANALYTICS DASHBOARD (always visible, but only if Supabase is connected)
+    # ── ANALYTICS DASHBOARD — fully inline styles (no CSS class dependency)
     if ANALYTICS_ON:
-        counts = get_counts()
-        total_visits  = counts.get(EV_VISIT, 0)
-        total_runs    = counts.get(EV_RUN,   0)
-        ats_count     = counts.get(EV_ATS,   0)
-        star_count    = counts.get(EV_STAR,  0)
-        summ_count    = counts.get(EV_SUMM,  0)
-        gap_count     = counts.get(EV_GAP,   0)
-        cover_count   = counts.get(EV_COVER, 0)
-        total_goals   = ats_count + star_count + summ_count + gap_count or 1
+        counts       = get_counts()
+        total_visits = counts.get(EV_VISIT, 0)
+        total_runs   = counts.get(EV_RUN,   0)
+        ats_count    = counts.get(EV_ATS,   0)
+        star_count   = counts.get(EV_STAR,  0)
+        summ_count   = counts.get(EV_SUMM,  0)
+        gap_count    = counts.get(EV_GAP,   0)
+        cover_count  = counts.get(EV_COVER, 0)
+        total_goals  = ats_count + star_count + summ_count + gap_count or 1
 
         def pct(n): return round(n / total_goals * 100)
 
-        # Each goal gets its own color
-        goal_rows = [
-            ("ATS Keywords",          ats_count,  "#c9a84c", "rgba(201,168,76,0.15)"),
-            ("Impact Bullet Rewrite", star_count, "#63b3ed", "rgba(99,179,237,0.15)"),
-            ("Summary Rewrite",       summ_count, "#68d391", "rgba(104,211,145,0.15)"),
-            ("Skills Gap",            gap_count,  "#fc8181", "rgba(252,129,129,0.15)"),
-        ]
-
-        goal_html = ""
-        for name, count, color, bg in goal_rows:
-            goal_html += f"""
-            <div class="goal-row">
-                <div class="goal-row-top">
-                    <span class="goal-name">{name}</span>
-                    <span class="goal-count" style="color:{color};">{count} <span style="color:#4a4845;font-size:0.6rem;">· {pct(count)}%</span></span>
+        def goal_row(name, count, color, grad):
+            w = pct(count)
+            return f"""
+            <div style="margin-bottom:0.7rem;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.28rem;">
+                    <span style="font-size:0.74rem; color:#b0aa9f;">{name}</span>
+                    <span style="font-family:'DM Mono',monospace; font-size:0.72rem; font-weight:500; color:{color};">
+                        {count} <span style="color:#4a4845; font-size:0.6rem;">· {w}%</span>
+                    </span>
                 </div>
-                <div class="goal-track">
-                    <div class="goal-fill" style="width:{pct(count)}%; background:linear-gradient(90deg,{color},{bg});"></div>
+                <div style="height:5px; border-radius:3px; background:rgba(255,255,255,0.05); overflow:hidden;">
+                    <div style="height:5px; width:{w}%; border-radius:3px;
+                                background:linear-gradient(90deg,{color},{grad});"></div>
                 </div>
             </div>"""
 
+        goals_html = (
+            goal_row("ATS Keywords",          ats_count,  "#c9a84c", "rgba(201,168,76,0.2)") +
+            goal_row("Impact Bullet Rewrite",  star_count, "#63b3ed", "rgba(99,179,237,0.2)") +
+            goal_row("Summary Rewrite",        summ_count, "#68d391", "rgba(104,211,145,0.2)") +
+            goal_row("Skills Gap",             gap_count,  "#fc8181", "rgba(252,129,129,0.2)")
+        )
+
         st.markdown(f"""
-        <div class="analytics-panel">
-            <div class="analytics-header">
-                <div class="analytics-header-dot"></div>
-                <span class="analytics-header-title">Live Analytics</span>
+        <div style="margin-top:1.6rem; border-radius:6px; overflow:hidden;
+                    border:1px solid rgba(201,168,76,0.25);">
+
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg,#1a160a 0%,#0f1118 100%);
+                        padding:0.8rem 1.1rem; border-bottom:1px solid rgba(201,168,76,0.18);
+                        display:flex; align-items:center; gap:0.55rem;">
+                <div style="width:7px; height:7px; border-radius:50%; background:#c9a84c;
+                            box-shadow:0 0 8px rgba(201,168,76,0.9);
+                            animation:none;"></div>
+                <span style="font-family:'DM Mono',monospace; font-size:0.62rem;
+                             letter-spacing:0.2em; text-transform:uppercase;
+                             color:#c9a84c; font-weight:500;">Live Analytics</span>
             </div>
-            <div class="analytics-body">
-                <div class="stat-cards">
-                    <div class="stat-card visitors">
-                        <span class="stat-num blue">{total_visits:,}</span>
-                        <span class="stat-lbl">Visitors</span>
+
+            <!-- Body -->
+            <div style="background:#0d0e12; padding:1rem 1.1rem;">
+
+                <!-- Stat cards -->
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr;
+                            gap:0.45rem; margin-bottom:1rem;">
+
+                    <div style="background:rgba(99,179,237,0.08);
+                                border:1px solid rgba(99,179,237,0.25);
+                                border-radius:5px; padding:0.6rem 0.4rem; text-align:center;">
+                        <div style="font-family:'DM Mono',monospace; font-size:1.25rem;
+                                    font-weight:500; color:#63b3ed; line-height:1.1;">{total_visits:,}</div>
+                        <div style="font-size:0.55rem; letter-spacing:0.1em; text-transform:uppercase;
+                                    color:#6a6560; font-family:'DM Mono',monospace; margin-top:0.15rem;">Visitors</div>
                     </div>
-                    <div class="stat-card runs">
-                        <span class="stat-num green">{total_runs:,}</span>
-                        <span class="stat-lbl">Analyses</span>
+
+                    <div style="background:rgba(104,211,145,0.07);
+                                border:1px solid rgba(104,211,145,0.22);
+                                border-radius:5px; padding:0.6rem 0.4rem; text-align:center;">
+                        <div style="font-family:'DM Mono',monospace; font-size:1.25rem;
+                                    font-weight:500; color:#68d391; line-height:1.1;">{total_runs:,}</div>
+                        <div style="font-size:0.55rem; letter-spacing:0.1em; text-transform:uppercase;
+                                    color:#6a6560; font-family:'DM Mono',monospace; margin-top:0.15rem;">Analyses</div>
                     </div>
-                    <div class="stat-card covers">
-                        <span class="stat-num gold">{cover_count:,}</span>
-                        <span class="stat-lbl">Letters</span>
+
+                    <div style="background:rgba(201,168,76,0.08);
+                                border:1px solid rgba(201,168,76,0.22);
+                                border-radius:5px; padding:0.6rem 0.4rem; text-align:center;">
+                        <div style="font-family:'DM Mono',monospace; font-size:1.25rem;
+                                    font-weight:500; color:#c9a84c; line-height:1.1;">{cover_count:,}</div>
+                        <div style="font-size:0.55rem; letter-spacing:0.1em; text-transform:uppercase;
+                                    color:#6a6560; font-family:'DM Mono',monospace; margin-top:0.15rem;">Letters</div>
                     </div>
                 </div>
-                <div class="goal-section-title">Goal Breakdown</div>
-                {goal_html}
+
+                <!-- Goal breakdown -->
+                <div style="font-family:'DM Mono',monospace; font-size:0.58rem; letter-spacing:0.16em;
+                            text-transform:uppercase; color:#4a4845;
+                            border-top:1px solid rgba(255,255,255,0.04);
+                            padding-top:0.75rem; margin-bottom:0.65rem;">
+                    Goal Breakdown
+                </div>
+                {goals_html}
             </div>
         </div>
         """, unsafe_allow_html=True)
