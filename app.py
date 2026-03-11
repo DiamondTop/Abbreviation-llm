@@ -310,7 +310,7 @@ with st.sidebar:
         "LLM Engine",
         [
             "Step-3.5-Flash (StepFun · Recommended)",
-            "Meta Llama via Meta/Facebook",
+            "Nemo via Nvidia",
             "Closed-source (Gemini) via Google"
         ]
     )
@@ -454,7 +454,7 @@ with st.sidebar:
 # ==============================
 model_map = {
     "Step-3.5-Flash (StepFun · Recommended)": "stepfun/step-3.5-flash:free",
-    "Meta Llama via Meta/Facebook":            "meta-llama/llama-3-8b-instruct",
+    "Nemo via Nvidia":            "nvidia/nemotron-3-super-120b-a12b:free",
 }
 
 if "Gemini" not in PROVIDER:
