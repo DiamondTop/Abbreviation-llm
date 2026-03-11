@@ -103,18 +103,76 @@ div[data-baseweb="option"]  { background: var(--bg2) !important; color: var(--te
 div[data-baseweb="option"]:hover { background: var(--bg3) !important; color: var(--gold) !important; }
 
 [data-testid="stFileUploader"] {
-    background: var(--bg2) !important; border: 1px dashed rgba(201,168,76,0.25) !important;
-    border-radius: 4px !important; padding: 0.5rem !important;
+    background: var(--bg2) !important;
+    border: 1px dashed rgba(201,168,76,0.3) !important;
+    border-radius: 4px !important;
+    padding: 0.5rem !important;
 }
+/* Every inner container must be forced dark */
+[data-testid="stFileUploader"] > div,
+[data-testid="stFileUploader"] section,
+[data-testid="stFileUploader"] section > div,
+[data-testid="stFileUploader"] section > input,
+[data-testid="stFileUploaderDropzone"],
+[data-testid="stFileUploaderDropzone"] > div {
+    background: var(--bg2) !important;
+    background-color: var(--bg2) !important;
+    border: none !important;
+}
+/* Hover state — slightly lighter dark */
+[data-testid="stFileUploader"]:hover {
+    border-color: rgba(201,168,76,0.55) !important;
+    background: var(--bg3) !important;
+}
+[data-testid="stFileUploader"]:hover section,
+[data-testid="stFileUploader"]:hover > div,
+[data-testid="stFileUploader"]:hover [data-testid="stFileUploaderDropzone"],
+[data-testid="stFileUploader"]:hover [data-testid="stFileUploaderDropzone"] > div {
+    background: var(--bg3) !important;
+    background-color: var(--bg3) !important;
+}
+/* Instruction text */
+[data-testid="stFileUploaderDropzoneInstructions"] {
+    background: transparent !important;
+}
+[data-testid="stFileUploaderDropzoneInstructions"] > div > span {
+    color: var(--muted) !important;
+}
+[data-testid="stFileUploaderDropzoneInstructions"] > div > small {
+    color: var(--placeholder) !important;
+}
+/* SVG upload icon */
+[data-testid="stFileUploader"] svg {
+    color: var(--gold) !important;
+    fill: var(--gold) !important;
+    opacity: 0.7;
+}
+/* Browse button */
 [data-testid="stFileUploader"] button {
     background: transparent !important; color: var(--gold) !important;
     border: 1px solid var(--border) !important; border-radius: 3px !important;
     font-family: var(--mono) !important; font-size: 0.72rem !important;
     letter-spacing: 0.1em !important; text-transform: uppercase !important;
 }
+[data-testid="stFileUploader"] button:hover {
+    border-color: var(--gold) !important;
+    background: var(--gold-dim) !important;
+}
+/* Uploaded file pill */
+[data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] {
+    background: var(--bg3) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 3px !important;
+}
+[data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] span,
+[data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] p {
+    color: var(--text) !important;
+}
+/* Label above the uploader */
 [data-testid="stFileUploader"] label {
     font-family: var(--mono) !important; font-size: 0.65rem !important;
-    letter-spacing: 0.18em !important; text-transform: uppercase !important; color: var(--gold) !important;
+    letter-spacing: 0.18em !important; text-transform: uppercase !important;
+    color: var(--gold) !important;
 }
 
 .stButton > button {
