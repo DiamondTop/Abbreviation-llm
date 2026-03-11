@@ -1,5 +1,6 @@
 import streamlit as st
 import re
+import time as _time
 import requests
 from datetime import datetime, timezone
 from pypdf import PdfReader
@@ -84,9 +85,6 @@ h1, h2, h3, h4 { font-family: var(--serif) !important; font-weight: 300 !importa
     box-shadow: 0 0 0 2px rgba(201,168,76,0.12) !important;
 }
 .stTextArea textarea::placeholder               { color: var(--placeholder) !important; opacity: 1 !important; }
-.stTextArea textarea::-webkit-input-placeholder { color: var(--placeholder) !important; opacity: 1 !important; }
-.stTextArea textarea::-moz-placeholder          { color: var(--placeholder) !important; opacity: 1 !important; }
-.stTextArea textarea:-ms-input-placeholder      { color: var(--placeholder) !important; opacity: 1 !important; }
 .stTextArea label, [data-testid="stWidgetLabel"] p {
     font-family: var(--mono) !important; font-size: 0.65rem !important;
     letter-spacing: 0.18em !important; text-transform: uppercase !important;
@@ -108,17 +106,12 @@ div[data-baseweb="option"]:hover { background: var(--bg3) !important; color: var
     background: var(--bg2) !important; border: 1px dashed rgba(201,168,76,0.25) !important;
     border-radius: 4px !important; padding: 0.5rem !important;
 }
-[data-testid="stFileUploader"]:hover { border-color: rgba(201,168,76,0.5) !important; }
-[data-testid="stFileUploader"] section { background: transparent !important; border: none !important; }
-[data-testid="stFileUploaderDropzoneInstructions"] > div > span  { color: var(--muted) !important; }
-[data-testid="stFileUploaderDropzoneInstructions"] > div > small { color: var(--placeholder) !important; }
 [data-testid="stFileUploader"] button {
     background: transparent !important; color: var(--gold) !important;
     border: 1px solid var(--border) !important; border-radius: 3px !important;
     font-family: var(--mono) !important; font-size: 0.72rem !important;
-    letter-spacing: 0.1em !important; text-transform: uppercase !important; transition: all 0.2s !important;
+    letter-spacing: 0.1em !important; text-transform: uppercase !important;
 }
-[data-testid="stFileUploader"] button:hover { border-color: var(--gold) !important; background: var(--gold-dim) !important; }
 [data-testid="stFileUploader"] label {
     font-family: var(--mono) !important; font-size: 0.65rem !important;
     letter-spacing: 0.18em !important; text-transform: uppercase !important; color: var(--gold) !important;
@@ -129,17 +122,16 @@ div[data-baseweb="option"]:hover { background: var(--bg3) !important; color: var
     border: 1px solid var(--gold) !important; border-radius: 3px !important;
     font-family: var(--sans) !important; font-size: 0.8rem !important;
     font-weight: 600 !important; letter-spacing: 0.12em !important;
-    text-transform: uppercase !important; padding: 0.7rem 2.2rem !important; transition: all 0.2s ease !important;
+    text-transform: uppercase !important; padding: 0.7rem 2.2rem !important;
 }
 .stButton > button:hover {
     background: transparent !important; color: var(--gold) !important;
-    transform: translateY(-1px) !important; box-shadow: 0 8px 30px rgba(201,168,76,0.2) !important;
 }
 .stDownloadButton > button {
     background: transparent !important; color: var(--gold) !important;
     border: 1px solid var(--border) !important; border-radius: 3px !important;
     font-size: 0.78rem !important; letter-spacing: 0.1em !important;
-    text-transform: uppercase !important; transition: all 0.2s !important;
+    text-transform: uppercase !important;
 }
 .stDownloadButton > button:hover { border-color: var(--gold) !important; background: var(--gold-dim) !important; }
 
@@ -158,11 +150,10 @@ hr { border: none !important; border-top: 1px solid var(--border) !important; ma
     font-weight: 300 !important; color: var(--gold) !important; line-height: 1.1 !important;
 }
 [data-testid="stMetricDelta"] { color: #28A745 !important; font-size: 0.78rem !important; }
-.stSpinner > div { border-top-color: var(--gold) !important; }
-.stAlert { background: var(--bg2) !important; border: 1px solid var(--border) !important; border-radius: 3px !important; color: var(--text) !important; }
+.stAlert { background: var(--bg2) !important; border: 1px solid var(--border) !important; border-radius: 3px !important; }
 
 .stMarkdown p, .stMarkdown li { color: var(--text) !important; line-height: 1.85 !important; font-size: 0.95rem !important; }
-.stMarkdown h3 { font-family: var(--serif) !important; color: var(--gold) !important; font-size: 1.4rem !important; margin-top: 1.5rem !important; font-weight: 300 !important; }
+.stMarkdown h3 { font-family: var(--serif) !important; color: var(--gold) !important; font-size: 1.4rem !important; margin-top: 1.5rem !important; }
 .stMarkdown strong { color: var(--gold-light) !important; font-weight: 500 !important; }
 .stMarkdown code { background: var(--bg3) !important; border: 1px solid var(--border) !important; border-radius: 3px !important; color: var(--gold) !important; font-family: var(--mono) !important; font-size: 0.82rem !important; padding: 0.15rem 0.45rem !important; }
 
@@ -181,53 +172,18 @@ hr { border: none !important; border-top: 1px solid var(--border) !important; ma
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gold); }
 </style>
-
-<script>
-const removeTitles = () => {
-    document.querySelectorAll('[data-testid="stSidebarCollapseButton"]').forEach(btn => {
-        btn.removeAttribute('title');
-        btn.removeAttribute('aria-label');
-        btn.style.display = 'none';
-    });
-    document.querySelectorAll('button[kind="header"]').forEach(btn => {
-        btn.removeAttribute('title');
-        btn.style.display = 'none';
-    });
-};
-removeTitles();
-new MutationObserver(removeTitles).observe(document.body, { childList: true, subtree: true });
-</script>
 """, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════
 # ANALYTICS — Supabase helpers
 # ══════════════════════════════════════════════════════
-# Supabase credentials live in .streamlit/secrets.toml:
-#
-#   [supabase]
-#   url = "https://xxxxxxxxxxxx.supabase.co"
-#   key = "your-anon-public-key"
-#
-# SQL to run once in Supabase SQL Editor:
-#
-#   CREATE TABLE analytics (
-#       id         BIGSERIAL PRIMARY KEY,
-#       event      TEXT NOT NULL,
-#       created_at TIMESTAMPTZ DEFAULT NOW()
-#   );
-#   -- Allow anonymous inserts + selects
-#   ALTER TABLE analytics ENABLE ROW LEVEL SECURITY;
-#   CREATE POLICY "allow_insert" ON analytics FOR INSERT WITH CHECK (true);
-#   CREATE POLICY "allow_select" ON analytics FOR SELECT USING (true);
-
 SUPABASE_URL = st.secrets.get("supabase", {}).get("url", "")
 SUPABASE_KEY = st.secrets.get("supabase", {}).get("key", "")
 ANALYTICS_ON = bool(SUPABASE_URL and SUPABASE_KEY)
 
-# Event keys — keep short and consistent
 EV_VISIT = "visit"
-EV_RUN   = "run"                     # any analysis run
+EV_RUN   = "run"
 EV_ATS   = "goal_ats"
 EV_STAR  = "goal_star"
 EV_SUMM  = "goal_summary"
@@ -252,7 +208,6 @@ def _sb_headers():
 
 
 def track(event: str):
-    """Fire-and-forget event insert into Supabase."""
     if not ANALYTICS_ON:
         return
     try:
@@ -263,11 +218,10 @@ def track(event: str):
             timeout=3
         )
     except Exception:
-        pass   # never let analytics break the app
+        pass
 
 
 def get_counts() -> dict:
-    """Return a dict of {event: count} for display."""
     if not ANALYTICS_ON:
         return {}
     try:
@@ -286,7 +240,6 @@ def get_counts() -> dict:
         return {}
 
 
-# ── Track unique page visit per browser session ──────────────────────────────
 if "visited" not in st.session_state:
     st.session_state.visited = True
     track(EV_VISIT)
@@ -338,7 +291,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── ANALYTICS DASHBOARD — fully inline styles (no CSS class dependency)
     if ANALYTICS_ON:
         counts       = get_counts()
         total_visits = counts.get(EV_VISIT, 0)
@@ -352,7 +304,6 @@ with st.sidebar:
 
         def pct(n): return round(n / total_goals * 100)
 
-        # — Panel header
         st.markdown(
             "<div style='margin-top:1.6rem; border-radius:6px 6px 0 0; overflow:hidden;"
             "border:1px solid rgba(201,168,76,0.25); border-bottom:none;"
@@ -365,88 +316,51 @@ with st.sidebar:
             "font-weight:500;'>Live Analytics</span></div>",
             unsafe_allow_html=True
         )
-
-        # — Stat cards
         st.markdown(
             "<div style='border-left:1px solid rgba(201,168,76,0.25);"
             "border-right:1px solid rgba(201,168,76,0.25);"
             "background:#0d0e12; padding:0.9rem 1rem 0.6rem;'>"
             "<div style='display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.45rem;'>"
-
             f"<div style='background:rgba(99,179,237,0.08); border:1px solid rgba(99,179,237,0.25);"
             f"border-radius:5px; padding:0.6rem 0.3rem; text-align:center;'>"
-            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500;"
-            f"color:#63b3ed; line-height:1.1;'>{total_visits:,}</div>"
-            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase;"
-            f"color:#6a6560; margin-top:0.15rem;'>Visitors</div></div>"
-
+            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500; color:#63b3ed;'>{total_visits:,}</div>"
+            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase; color:#6a6560;'>Visitors</div></div>"
             f"<div style='background:rgba(104,211,145,0.07); border:1px solid rgba(104,211,145,0.22);"
             f"border-radius:5px; padding:0.6rem 0.3rem; text-align:center;'>"
-            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500;"
-            f"color:#68d391; line-height:1.1;'>{total_runs:,}</div>"
-            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase;"
-            f"color:#6a6560; margin-top:0.15rem;'>Analyses</div></div>"
-
+            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500; color:#68d391;'>{total_runs:,}</div>"
+            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase; color:#6a6560;'>Analyses</div></div>"
             f"<div style='background:rgba(201,168,76,0.08); border:1px solid rgba(201,168,76,0.22);"
             f"border-radius:5px; padding:0.6rem 0.3rem; text-align:center;'>"
-            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500;"
-            f"color:#c9a84c; line-height:1.1;'>{cover_count:,}</div>"
-            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase;"
-            f"color:#6a6560; margin-top:0.15rem;'> Cover Letters</div></div>"
-
+            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500; color:#c9a84c;'>{cover_count:,}</div>"
+            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase; color:#6a6560;'>Cover Letters</div></div>"
             "</div></div>",
             unsafe_allow_html=True
         )
 
-        # — Goal breakdown section title
-        st.markdown(
-            "<div style='border-left:1px solid rgba(201,168,76,0.25);"
-            "border-right:1px solid rgba(201,168,76,0.25);"
-            "background:#0d0e12; padding:0.6rem 1rem 0.5rem;'>"
-            "<div style='font-family:DM Mono,monospace; font-size:0.57rem; letter-spacing:0.16em;"
-            "text-transform:uppercase; color:#4a4845;"
-            "border-top:1px solid rgba(255,255,255,0.05); padding-top:0.6rem;'>"
-            "Goal Breakdown</div></div>",
-            unsafe_allow_html=True
-        )
-
-        # — Goal rows (each rendered individually — no nesting issues)
         goal_items = [
-            ("ATS Keywords",         ats_count,  "#c9a84c", "rgba(201,168,76,0.2)"),
+            ("ATS Keywords",          ats_count,  "#c9a84c", "rgba(201,168,76,0.2)"),
             ("Impact Bullet Rewrite", star_count, "#63b3ed", "rgba(99,179,237,0.2)"),
-            ("Summary Rewrite",      summ_count, "#68d391", "rgba(104,211,145,0.2)"),
-            ("Skills Gap",           gap_count,  "#fc8181", "rgba(252,129,129,0.2)"),
+            ("Summary Rewrite",       summ_count, "#68d391", "rgba(104,211,145,0.2)"),
+            ("Skills Gap",            gap_count,  "#fc8181", "rgba(252,129,129,0.2)"),
         ]
         for i, (name, count, color, grad) in enumerate(goal_items):
-            w   = pct(count)
+            w = pct(count)
             is_last = (i == len(goal_items) - 1)
             bottom_radius = "0 0 6px 6px" if is_last else "0"
             bottom_border = "border-bottom:1px solid rgba(201,168,76,0.25);" if is_last else ""
             st.markdown(
                 f"<div style='border-left:1px solid rgba(201,168,76,0.25);"
                 f"border-right:1px solid rgba(201,168,76,0.25); {bottom_border}"
-                f"border-radius:{bottom_radius}; background:#0d0e12;"
-                f"padding:0.3rem 1rem 0.55rem;'>"
+                f"border-radius:{bottom_radius}; background:#0d0e12; padding:0.3rem 1rem 0.55rem;'>"
                 f"<div style='display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.28rem;'>"
                 f"<span style='font-size:0.73rem; color:#b0aa9f;'>{name}</span>"
-                f"<span style='font-family:DM Mono,monospace; font-size:0.7rem; font-weight:500; color:{color};'>"
+                f"<span style='font-family:DM Mono,monospace; font-size:0.7rem; color:{color};'>"
                 f"{count} <span style='color:#4a4845; font-size:0.58rem;'>· {w}%</span></span></div>"
                 f"<div style='height:5px; border-radius:3px; background:rgba(255,255,255,0.05); overflow:hidden;'>"
                 f"<div style='height:5px; width:{w}%; border-radius:3px;"
                 f"background:linear-gradient(90deg,{color},{grad});'></div></div></div>",
                 unsafe_allow_html=True
             )
-    else:
-        st.markdown("""
-        <div style="margin-top:1.4rem; padding:0.9rem 1rem; background:#0b0c0f;
-                    border:1px dashed rgba(201,168,76,0.15); border-radius:4px;">
-            <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.14em;
-                        text-transform:uppercase; color:#4a4845; margin-bottom:0.3rem;">Analytics</div>
-            <div style="font-size:0.75rem; color:#4a4845; line-height:1.6;">
-                Add Supabase credentials to secrets.toml to enable live analytics.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
 
 
 # ==============================
@@ -454,7 +368,7 @@ with st.sidebar:
 # ==============================
 model_map = {
     "Step-3.5-Flash (StepFun · Recommended)": "stepfun/step-3.5-flash:free",
-    "Nemo via Nvidia":            "nvidia/nemotron-3-super-120b-a12b:free",
+    "Nemo via Nvidia":                         "nvidia/nemotron-3-super-120b-a12b:free",
 }
 
 if "Gemini" not in PROVIDER:
@@ -510,16 +424,14 @@ def call_llm(system_task, user_content, add_score=True):
 def generate_cover_letter(job_desc, resume_text):
     system_task = """You are an expert career coach and professional writer.
 Write a compelling, personalized cover letter based on the candidate's resume and the job description provided.
-
 The cover letter must:
 - Be 3–4 paragraphs, professional but warm in tone
 - Open with a strong hook that references the specific role and company
 - Highlight 2–3 of the candidate's most relevant experiences from their resume that directly match the job requirements
 - Include at least one quantified achievement from the resume
 - Close with a confident call to action
-- NOT use generic filler phrases like "I am writing to express my interest..." or "I am a hard worker"
+- NOT use generic filler phrases like "I am writing to express my interest..."
 - Sound like a real human wrote it, not a template
-
 Output ONLY the cover letter text. Start directly with "Dear Hiring Manager," or a named salutation if available."""
     return call_llm(system_task, f"JOB DESCRIPTION:\n{job_desc}\n\nRESUME:\n{resume_text}", add_score=False)
 
@@ -528,6 +440,87 @@ def get_score_color(score):
     if score < 50:   return "#FF4B4B"
     elif score < 80: return "#FFA500"
     else:            return "#28A745"
+
+
+# ==============================
+# PROGRESS BAR HELPER
+# ==============================
+def make_progress_ui(steps: list):
+    """
+    Returns (container, advance_fn).
+    Call advance_fn(i, label) to move to step i.
+    Call advance_fn(None) to clear the whole bar.
+    """
+    container = st.empty()
+
+    def render(current_i):
+        if current_i is None:
+            container.empty()
+            return
+
+        total   = len(steps) - 1
+        bar_pct = int(current_i / total * 100)
+        icon, label = steps[current_i]
+
+        # Build step dots HTML
+        dots_html = ""
+        for si, (sicon, slabel) in enumerate(steps):
+            if si < current_i:
+                dot_bg, dot_color, text_color, content = "#28A745", "#0b0c0f", "#28A745", "✓"
+            elif si == current_i:
+                dot_bg, dot_color, text_color, content = "#c9a84c", "#0b0c0f", "#f0ede6", sicon
+            else:
+                dot_bg, dot_color, text_color, content = "#1c1f28", "#4a4845", "#4a4845", str(si + 1)
+
+            connector = (
+                f"<div style='flex:1; height:2px; margin:0 4px; align-self:center; border-radius:1px;"
+                f"background:{'#28A745' if si < current_i else 'rgba(201,168,76,0.12)'};"
+                f"'></div>"
+            ) if si < len(steps) - 1 else ""
+
+            dots_html += (
+                f"<div style='display:flex; flex-direction:column; align-items:center; gap:6px;'>"
+                f"<div style='width:34px; height:34px; border-radius:50%;"
+                f"background:{dot_bg}; color:{dot_color};"
+                f"border:1.5px solid {'#c9a84c' if si == current_i else dot_bg};"
+                f"display:flex; align-items:center; justify-content:center;"
+                f"font-size:0.85rem; font-weight:600;'>{content}</div>"
+                f"<div style='font-family:DM Mono,monospace; font-size:0.5rem; letter-spacing:0.07em;"
+                f"text-transform:uppercase; color:{text_color}; text-align:center; max-width:66px;"
+                f"line-height:1.35;'>{slabel}</div>"
+                f"</div>" + connector
+            )
+
+        container.markdown(
+            f"<div style='background:#111318; border:1px solid rgba(201,168,76,0.28);"
+            f"border-radius:10px; padding:1.5rem 1.8rem; margin-bottom:1.4rem;'>"
+
+            # Header row
+            f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;'>"
+            f"<div style='display:flex; align-items:center; gap:0.6rem;'>"
+            f"<div style='width:8px; height:8px; border-radius:50%; background:#c9a84c;"
+            f"box-shadow:0 0 10px rgba(201,168,76,0.9); animation:pulse 1.5s infinite;'></div>"
+            f"<span style='font-family:DM Mono,monospace; font-size:0.68rem; letter-spacing:0.14em;"
+            f"text-transform:uppercase; color:#c9a84c;'>{icon} &nbsp;{label}</span>"
+            f"</div>"
+            f"<span style='font-family:DM Mono,monospace; font-size:0.78rem;"
+            f"font-weight:600; color:#c9a84c;'>{bar_pct}%</span>"
+            f"</div>"
+
+            # Progress track
+            f"<div style='height:6px; background:rgba(201,168,76,0.1); border-radius:3px;"
+            f"overflow:hidden; margin-bottom:1.4rem;'>"
+            f"<div style='height:6px; width:{bar_pct}%; border-radius:3px;"
+            f"background:linear-gradient(90deg,#7a5520,#c9a84c,#e8c87a);'></div></div>"
+
+            # Step dots
+            f"<div style='display:flex; align-items:flex-start; justify-content:center;'>"
+            f"{dots_html}</div>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+
+    return render
 
 
 # ==============================
@@ -548,7 +541,7 @@ st.markdown("""
         </div>
         <h1 style="font-family:'Cormorant Garamond',Georgia,serif;
                    font-size:clamp(2.6rem,5.5vw,4.6rem); font-weight:300;
-                   line-height:1.05; color:#f0ede6; margin-bottom:0.7rem; letter-spacing:-0.01em;">
+                   line-height:1.05; color:#f0ede6; margin-bottom:0.7rem;">
             Resume<em style="color:#c9a84c; font-style:italic;">Forge</em>
         </h1>
         <p style="font-family:'DM Sans',sans-serif; font-size:0.98rem; color:#9a958f;
@@ -644,27 +637,55 @@ if run:
     elif not job_desc.strip():
         st.warning("⚠  Please paste a job description to match against.")
     else:
-        resume_text = extract_text(resume_file)
         system_task = prompt_options[selected_strategy]
         if custom_instructions:
             system_task += f"  Additional user context: {custom_instructions}"
 
-        # ── Track this run
         track(EV_RUN)
         track(GOAL_EVENTS.get(selected_strategy, "goal_other"))
 
-        # ── Run main analysis
-        with st.spinner("Analyzing your resume against the role..."):
-            result = call_llm(system_task, f"JOB DESCRIPTION:\n{job_desc}\n\nRESUME:\n{resume_text}")
+        # ── Step definitions ──────────────────────────────────
+        steps_base = [
+            ("📄", "Reading resume"),
+            ("🔍", "Parsing job description"),
+            ("🤖", "Running AI analysis"),
+            ("✅", "Complete"),
+        ]
+        steps_cover = [
+            ("📄", "Reading resume"),
+            ("🔍", "Parsing job description"),
+            ("🤖", "Running AI analysis"),
+            ("✉️",  "Generating cover letter"),
+            ("✅", "Complete"),
+        ]
+        steps = steps_cover if is_ats else steps_base
+        total = len(steps) - 1
 
-        # ── Cover letter (ATS only)
+        # ── Render progress UI ────────────────────────────────
+        render_progress = make_progress_ui(steps)
+
+        render_progress(0)
+        resume_text = extract_text(resume_file)
+
+        render_progress(1)
+        _time.sleep(0.35)   # let user see the step
+
+        render_progress(2)
+        result = call_llm(system_task, f"JOB DESCRIPTION:\n{job_desc}\n\nRESUME:\n{resume_text}")
+
         cover_letter_text = ""
         if is_ats and result:
-            with st.spinner("Generating your tailored cover letter..."):
-                cover_letter_text = generate_cover_letter(job_desc, resume_text)
+            render_progress(3)
+            cover_letter_text = generate_cover_letter(job_desc, resume_text)
             if cover_letter_text:
                 track(EV_COVER)
 
+        # Complete → brief pause → clear bar
+        render_progress(total)
+        _time.sleep(0.6)
+        render_progress(None)   # clear
+
+        # ── Display results ───────────────────────────────────
         if result:
             score_match = re.search(r"MATCH_SCORE:\s*(\d+)", result)
 
@@ -735,7 +756,7 @@ if run:
                     file_name="resume_analysis.txt", mime="text/plain"
                 )
 
-            # ── Cover Letter Section ──────────────────────────────────────
+            # ── Cover Letter Section ──────────────────────────
             if is_ats and cover_letter_text:
                 st.markdown("<hr/>", unsafe_allow_html=True)
 
