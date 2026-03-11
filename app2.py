@@ -98,6 +98,7 @@ def extract_text(file):
 
 def get_llm_response(prompt, provider):
     try:
+        # 1. DeepSeek R1
         if "DeepSeek" in provider:
             client = OpenAI(
                 api_key=st.secrets["OPENROUTER_API_KEY"],
@@ -109,6 +110,7 @@ def get_llm_response(prompt, provider):
             )
             return response.choices[0].message.content
 
+        # 2. OpenAI o1-mini
         elif "OpenAI" in provider:
             client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
             response = client.chat.completions.create(
@@ -117,13 +119,15 @@ def get_llm_response(prompt, provider):
             )
             return response.choices[0].message.content
 
+        # 3. Gemini 2.0 Flash
         elif "Gemini" in provider:
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             model = genai.GenerativeModel("gemini-2.0-flash")
             response = model.generate_content(prompt)
             return response.text
+            
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error connecting to {provider}: {str(e)}"
 
 # ==============================
 # SIDEBAR
