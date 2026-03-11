@@ -134,9 +134,9 @@ def get_llm_response(prompt, provider):
             client = OpenAI(api_key=st.secrets["OPENROUTER_API_KEY"], base_url="https://openrouter.ai/api/v1")
             response = client.chat.completions.create(model="meta-llama/llama-3.1-8b-instruct", messages=[{"role": "user", "content": prompt}])
             return response.choices[0].message.content
-        elif "OpenAI" in provider:
+        elif "Deep-seek" in provider:
             client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-            response = client.chat.completions.create(model="o1-mini", messages=[{"role": "user", "content": prompt}])
+            response = client.chat.completions.create(model="deepseek/deepseek-r1", messages=[{"role": "user", "content": prompt}])
             return response.choices[0].message.content
         elif "Gemini" in provider:
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -150,7 +150,7 @@ def get_llm_response(prompt, provider):
 # ==============================
 with st.sidebar:
     st.markdown("### ✦ Settings")
-    PROVIDER = st.selectbox("Reasoning Engine", ["Metal-llama (Reasoning Expert)", "OpenAI o1-mini (Logic Focused)", "Gemini 2.0 Flash"])
+    PROVIDER = st.selectbox("Reasoning Engine", ["Metal-llama (Reasoning Expert)", "Deep-seek (Logic Focused)", "Gemini 2.0 Flash"])
     st.markdown("---")
     st.markdown("**Attach Context Files**")
     uploaded_files = st.file_uploader("Upload files", type=["pdf", "docx", "txt", "png", "jpg", "jpeg", "xlsx", "xls", "csv"], accept_multiple_files=True, label_visibility="collapsed")
