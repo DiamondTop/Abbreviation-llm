@@ -1,41 +1,103 @@
 import streamlit as st
+import re
 import requests
+from PIL import Image
+import pytesseract
+from pypdf import PdfReader
+from docx import Document
 from openai import OpenAI
 import google.generativeai as genai
 
 # ==============================
-# PAGE CONFIG & STYLES (Reusing your elegant gold/dark theme)
+# PAGE CONFIG & STYLES
 # ==============================
-st.set_page_config(page_title="Reasoning Forge", page_icon="🧠", layout="wide")
+st.set_page_config(
+    page_title="Reasoning Forge",
+    page_icon="🧠",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# (Keep your existing CSS block here - it's excellent for the brand)
+# Apply your custom luxury dark/gold theme
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+    --bg:         #0b0c0f;
+    --bg2:        #111318;
+    --bg3:        #1c1f28;
+    --gold:       #c9a84c;
+    --gold-light: #e8c87a;
+    --border:     rgba(201,168,76,0.22);
+    --text:       #f0ede6;
+    --muted:      #9a958f;
+    --serif:      'Cormorant Garamond', Georgia, serif;
+    --sans:       'DM Sans', sans-serif;
+    --mono:       'DM Mono', monospace;
+}
+
+html, body, [data-testid="stAppViewContainer"], .stApp {
+    background-color: var(--bg) !important;
+    color: var(--text) !important;
+    font-family: var(--sans) !important;
+}
+
+[data-testid="stSidebar"] {
+    background: var(--bg2) !important;
+    border-right: 1px solid var(--border) !important;
+}
+
+.stTextArea textarea {
+    background: var(--bg2) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+
+.stButton > button {
+    background: var(--gold) !important;
+    color: #0b0c0f !important;
+    border-radius: 3px !important;
+    font-weight: 600 !important;
+    width: 100%;
+}
+
+.reasoning-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2rem;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    position: relative;
+}
+.reasoning-box::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--gold), transparent);
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ==============================
-# SIDEBAR - LLM SELECTION
+# HELPERS
 # ==============================
-with st.sidebar:
-    st.markdown("### ✦ Model Selection")
-    
-    # Dropdown for 3 different LLM providers
-    PROVIDER = st.selectbox(
-        "Choose Reasoning Engine",
-        [
-            "DeepSeek R1 (Reasoning Expert)",
-            "OpenAI o1-mini (Logic Focused)",
-            "Gemini 2.0 Flash (Speed & Context)"
-        ]
-    )
-    
-    st.info("Reasoning models take longer to respond as they 'think' through the problem step-by-step.")
-
-# ==============================
-# LLM CLIENT SETUP
-# ==============================
-def get_llm_response(prompt, provider):
-    """Handles logic for the 3 different selected LLMs"""
-    
+def extract_text(file):
+    ext = file.name.split(".")[-1].lower()
     try:
-        # 1. DeepSeek R1 via OpenRouter
+        if ext == "pdf":
+            return "\n".join(page.extract_text() for page in PdfReader(file).pages)
+        elif ext == "docx":
+            return "\n".join(p.text for p in Document(file).paragraphs)
+        elif ext in ["png", "jpg", "jpeg"]:
+            img = Image.open(file)
+            return pytesseract.image_to_string(img)
+        return file.read().decode("utf-8")
+    except Exception as e:
+        st.error(f"Extraction error: {e}")
+        return ""
+
+def get_llm_response(prompt, provider):
+    try:
         if "DeepSeek" in provider:
             client = OpenAI(
                 api_key=st.secrets["OPENROUTER_API_KEY"],
@@ -44,63 +106,3 @@ def get_llm_response(prompt, provider):
             response = client.chat.completions.create(
                 model="deepseek/deepseek-r1",
                 messages=[{"role": "user", "content": prompt}]
-            )
-            return response.choices[0].message.content
-
-        # 2. OpenAI o1-mini
-        elif "OpenAI" in provider:
-            client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-            response = client.chat.completions.create(
-                model="o1-mini", # o1 models use 'developer' or 'user' roles specifically
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.choices[0].message.content
-
-        # 3. Gemini 2.0 Flash
-        elif "Gemini" in provider:
-            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-            model = genai.GenerativeModel("gemini-2.0-flash")
-            response = model.generate_content(prompt)
-            return response.text
-
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-# ==============================
-# MAIN INTERFACE
-# ==============================
-st.markdown("""
-<h1 style="font-family:'Cormorant Garamond'; font-size:3.5rem; font-weight:300;">
-    Reasoning <em style="color:#c9a84c; font-style:italic;">Forge</em>
-</h1>
-""", unsafe_allow_html=True)
-
-user_input = st.text_area(
-    "Enter a complex problem, math equation, or logic puzzle:",
-    height=250,
-    placeholder="Ex: How many R's are in the word Strawberry? Explain your step-by-step logic."
-)
-
-if st.button("✦ Start Reasoning"):
-    if user_input:
-        with st.spinner(f"The {PROVIDER} is thinking..."):
-            answer = get_llm_response(user_input, PROVIDER)
-            
-            # Formatting the output
-            st.markdown("<hr/>", unsafe_allow_html=True)
-            st.markdown("### ✦ Final Response")
-            
-            # Reasoning models often return <think> tags. 
-            # This logic separates the 'thought' from the 'answer'.
-            if "<think>" in answer:
-                parts = answer.split("</think>")
-                thought_process = parts[0].replace("<think>", "").strip()
-                final_answer = parts[1].strip()
-                
-                with st.expander("View Internal Thought Process", expanded=True):
-                    st.write(thought_process)
-                st.markdown(f"<div class='cover-letter-box'>{final_answer}</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div class='cover-letter-box'>{answer}</div>", unsafe_allow_html=True)
-    else:
-        st.warning("Please enter a prompt first.")
