@@ -138,7 +138,7 @@ def get_llm_response(prompt, provider):
         
         if "Metal-llama" in provider:
             # Correct ID for Llama 3.1 8B Free
-            model_id = "meta-llama/llama-3.1-8b-instruct:free"
+            model_id = "meta-llama/llama-3.1-8b-instruct"
         elif "Deep-seek" in provider:
             # Correct ID for DeepSeek R1 Free
             model_id = "deepseek/deepseek-r1:free"
