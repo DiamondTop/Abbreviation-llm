@@ -144,7 +144,7 @@ def get_llm_response(prompt, provider):
             model_id = "nvidia/nemotron-3-super-120b-a12b:free"
         elif "Stepfun" in provider:
             # Correct ID for Step-3.5-Flash
-            model_id = "stepfun/step-3.5-flash"
+            model_id = "stepfun/step-3.5-flash:free"
         else:
             model_id = "meta-llama/llama-3.1-8b-instruct:free"
 
