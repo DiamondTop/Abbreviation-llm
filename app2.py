@@ -19,20 +19,20 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Apply your custom luxury dark/gold theme
+# Clean light theme
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 
 :root {
-    --bg:         #0b0c0f;
-    --bg2:        #111318;
-    --bg3:        #1c1f28;
-    --gold:       #c9a84c;
-    --gold-light: #e8c87a;
-    --border:     rgba(201,168,76,0.22);
-    --text:       #f0ede6;
-    --muted:      #9a958f;
+    --bg:         #f7f5f0;
+    --bg2:        #ffffff;
+    --bg3:        #edeae3;
+    --gold:       #a0732a;
+    --gold-light: #c9a84c;
+    --border:     rgba(160,115,42,0.25);
+    --text:       #1a1612;
+    --muted:      #6b6560;
     --serif:      'Cormorant Garamond', Georgia, serif;
     --sans:       'DM Sans', sans-serif;
     --mono:       'DM Mono', monospace;
@@ -49,34 +49,69 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     border-right: 1px solid var(--border) !important;
 }
 
+/* Sidebar text */
+[data-testid="stSidebar"] * {
+    color: var(--text) !important;
+}
+
+/* Text area */
 .stTextArea textarea {
     background: var(--bg2) !important;
     border: 1px solid var(--border) !important;
     color: var(--text) !important;
+    border-radius: 6px !important;
+}
+.stTextArea textarea:focus {
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 0 2px rgba(160,115,42,0.12) !important;
 }
 
+/* Selectbox & labels */
+.stSelectbox label, .stTextArea label, .stFileUploader label {
+    color: var(--muted) !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+/* Button */
 .stButton > button {
     background: var(--gold) !important;
-    color: #0b0c0f !important;
-    border-radius: 3px !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 4px !important;
     font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    letter-spacing: 0.03em !important;
+    padding: 0.6rem 1.5rem !important;
     width: 100%;
+    transition: background 0.2s ease !important;
+}
+.stButton > button:hover {
+    background: var(--gold-light) !important;
 }
 
+/* Result box */
 .reasoning-box {
     background: var(--bg2);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 8px;
     padding: 2rem;
-    line-height: 1.8;
+    line-height: 1.85;
     white-space: pre-wrap;
+    color: var(--text);
+    font-size: 0.97rem;
     position: relative;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
 }
 .reasoning-box::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, var(--gold), transparent);
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    border-radius: 8px 8px 0 0;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light), transparent);
 }
 
+/* File badge */
 .file-badge {
     display: inline-block;
     background: var(--bg3);
@@ -86,6 +121,19 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     font-size: 0.8rem;
     color: var(--gold);
     margin-top: 0.5rem;
+    font-weight: 500;
+}
+
+/* Divider */
+hr {
+    border-color: var(--border) !important;
+}
+
+/* Expander */
+[data-testid="stExpander"] {
+    background: var(--bg2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -222,7 +270,7 @@ with st.sidebar:
 # ==============================
 st.markdown("""
 <h1 style="font-family:'Cormorant Garamond'; font-size:3.5rem; font-weight:300;">
-    Reasoning <em style="color:#c9a84c; font-style:italic;">Forge</em>
+    Reasoning <em style="color:#a0732a; font-style:italic;">Forge</em>
 </h1>
 """, unsafe_allow_html=True)
 
