@@ -1,15 +1,17 @@
 import streamlit as st
 import re
-import requests
+import time
+import io
+import datetime
+import html
 from PIL import Image
 import pytesseract
 from pypdf import PdfReader
-from docx import Document
+from docx import Document as DocxDocument
+from docx.shared import Pt, RGBColor, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 import pandas as pd
 from openai import OpenAI
-import google.generativeai as genai
-import datetime
-import html
 
 # ==============================
 # PAGE CONFIG & STYLES
@@ -49,9 +51,7 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     background: var(--bg2) !important;
     border-right: 1px solid var(--border) !important;
 }
-[data-testid="stSidebar"] * {
-    color: var(--text) !important;
-}
+[data-testid="stSidebar"] * { color: var(--text) !important; }
 
 /* ── Chat bubbles ── */
 .bubble-user {
@@ -59,19 +59,18 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     color: #ffffff;
     border-radius: 16px 16px 4px 16px;
     padding: 0.85rem 1.2rem;
-    margin: 0.5rem 0 0.5rem 15%;
+    margin: 0.5rem 0 0.25rem 15%;
     line-height: 1.65;
     font-size: 0.95rem;
     word-wrap: break-word;
 }
-
 .bubble-ai {
     background: var(--bg2);
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 16px 16px 16px 4px;
     padding: 0.85rem 1.2rem;
-    margin: 0.5rem 15% 0.5rem 0;
+    margin: 0.5rem 15% 0.1rem 0;
     line-height: 1.75;
     font-size: 0.95rem;
     word-wrap: break-word;
@@ -96,6 +95,24 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
 }
 .label-user { text-align: right; margin-right: 0.2rem; }
 .label-ai   { text-align: left;  margin-left:  0.2rem; }
+
+/* ── Timing badge ── */
+.timing-badge {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin: 0 0 0.75rem 0.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.timing-bar {
+    display: inline-block;
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+    vertical-align: middle;
+    margin-right: 0.3rem;
+}
 
 /* ── Input area ── */
 .stTextArea textarea {
@@ -131,7 +148,6 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     color: #ffffff !important;
 }
 
-/* ── File badge ── */
 .file-badge {
     display: block;
     background: var(--bg3);
@@ -143,8 +159,6 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     margin-bottom: 0.4rem;
     font-weight: 500;
 }
-
-/* ── Divider between turns ── */
 .turn-divider {
     border: none;
     border-top: 1px dashed var(--border);
@@ -156,16 +170,10 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
 # ==============================
 # SESSION STATE INIT
 # ==============================
-if "messages" not in st.session_state:
-    # Each message: {"role": "user"|"assistant", "content": str}
-    st.session_state.messages = []
-
-if "file_context" not in st.session_state:
-    # Extracted file text injected once as a system-level context
-    st.session_state.file_context = ""
-
-if "file_names" not in st.session_state:
-    st.session_state.file_names = []
+# message shape: {"role": "user"|"assistant", "content": str, "elapsed": float|None, "ts": str}
+if "messages"     not in st.session_state: st.session_state.messages     = []
+if "file_context" not in st.session_state: st.session_state.file_context = ""
+if "file_names"   not in st.session_state: st.session_state.file_names   = []
 
 # ==============================
 # HELPERS
@@ -177,7 +185,7 @@ def extract_text(file) -> tuple[str, str]:
             reader = PdfReader(file)
             return "\n".join(p.extract_text() or "" for p in reader.pages), "PDF"
         elif ext == "docx":
-            doc = Document(file)
+            doc = DocxDocument(file)
             return "\n".join(p.text for p in doc.paragraphs), "DOCX"
         elif ext in ["xlsx", "xls"]:
             xls = pd.ExcelFile(file)
@@ -197,39 +205,42 @@ def extract_text(file) -> tuple[str, str]:
 
 
 def format_for_display(text: str) -> str:
-    """Convert LLM plain-text into clean HTML — no giant blank gaps."""
     escaped = html.escape(text)
     paragraphs = re.split(r'\n{2,}', escaped.strip())
-    parts = []
-    for para in paragraphs:
-        para = para.replace('\n', '<br>')
-        parts.append(f"<p>{para}</p>")
-    return "".join(parts)
+    return "".join(
+        f"<p>{para.replace(chr(10), '<br>')}</p>"
+        for para in paragraphs
+    )
+
+
+def elapsed_label(seconds: float) -> str:
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    return f"{int(seconds // 60)}m {seconds % 60:.0f}s"
+
+
+def bar_width(seconds: float) -> int:
+    """Scale bar width (px) capped at 120px for display."""
+    return min(int(seconds * 6), 120)
 
 
 def build_messages_for_api(file_context: str, history: list) -> list:
-    """
-    Build the messages array for the OpenRouter API call.
-    File context is prepended to the very first user message so the
-    model always has it, but we don't repeat it on every turn.
-    """
     api_messages = []
     for i, msg in enumerate(history):
         content = msg["content"]
-        # Attach file context to the first user message only
         if i == 0 and msg["role"] == "user" and file_context:
             content = f"CONTEXT FROM FILES:\n{file_context}\n\n---\n\nUSER: {content}"
         api_messages.append({"role": msg["role"], "content": content})
     return api_messages
 
 
-def get_llm_response(history: list, file_context: str, provider: str) -> str:
+def get_llm_response(history: list, file_context: str, provider: str) -> tuple[str, float]:
+    """Returns (response_text, elapsed_seconds)."""
     try:
         client = OpenAI(
             api_key=st.secrets["OPENROUTER_API_KEY"],
             base_url="https://openrouter.ai/api/v1"
         )
-
         if "Metal-llama" in provider:
             model_id = "meta-llama/llama-3.1-8b-instruct:free"
         elif "nemotron-3 by Nvidia" in provider:
@@ -241,6 +252,7 @@ def get_llm_response(history: list, file_context: str, provider: str) -> str:
 
         api_messages = build_messages_for_api(file_context, history)
 
+        t0 = time.time()
         response = client.chat.completions.create(
             model=model_id,
             messages=api_messages,
@@ -249,30 +261,165 @@ def get_llm_response(history: list, file_context: str, provider: str) -> str:
                 "X-Title": "Reasoning Forge"
             }
         )
-        return response.choices[0].message.content
+        elapsed = time.time() - t0
+        return response.choices[0].message.content, elapsed
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {str(e)}", 0.0
 
 
-def build_download_text(history: list, provider: str, file_names: list) -> str:
-    """Export the full conversation as a plain-text file."""
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    files_str = ", ".join(file_names) if file_names else "None"
-    div = "=" * 60
-    lines = [
-        f"REASONING FORGE — CONVERSATION EXPORT",
-        div,
-        f"Date    : {timestamp}",
-        f"Engine  : {provider}",
-        f"Files   : {files_str}",
-        div, ""
-    ]
-    for i, msg in enumerate(history):
-        role_label = "YOU" if msg["role"] == "user" else "AI"
-        lines.append(f"[{role_label}]\n{msg['content']}\n")
-        if i < len(history) - 1:
-            lines.append("-" * 40)
-    return "\n".join(lines)
+# ==============================
+# WORD DOCUMENT EXPORT
+# ==============================
+def build_word_doc(history: list, provider: str, file_names: list) -> bytes:
+    """Generate a nicely formatted .docx and return as bytes."""
+    doc = DocxDocument()
+
+    # ── Page margins (1 inch all sides) ──────────────────────
+    section = doc.sections[0]
+    section.top_margin    = Inches(1)
+    section.bottom_margin = Inches(1)
+    section.left_margin   = Inches(1)
+    section.right_margin  = Inches(1)
+
+    GOLD   = RGBColor(0xA0, 0x73, 0x2A)
+    DARK   = RGBColor(0x1A, 0x16, 0x12)
+    MUTED  = RGBColor(0x6B, 0x65, 0x60)
+
+    # ── Title ────────────────────────────────────────────────
+    title_para = doc.add_paragraph()
+    title_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    run = title_para.add_run("Reasoning Forge")
+    run.font.size  = Pt(26)
+    run.font.bold  = True
+    run.font.color.rgb = GOLD
+    run.font.name  = "Georgia"
+
+    sub = doc.add_paragraph()
+    sr  = sub.add_run(f"Conversation Export  ·  Engine: {provider}")
+    sr.font.size  = Pt(10)
+    sr.font.color.rgb = MUTED
+    sr.font.name  = "Arial"
+
+    # ── Metadata table ───────────────────────────────────────
+    timestamp  = datetime.datetime.now().strftime("%d %B %Y, %H:%M:%S")
+    files_str  = ", ".join(file_names) if file_names else "None"
+    turn_count = sum(1 for m in history if m["role"] == "user")
+
+    meta = doc.add_table(rows=3, cols=2)
+    meta.style = "Table Grid"
+    labels = ["Date", "Files Attached", "Total Turns"]
+    values = [timestamp, files_str, str(turn_count)]
+    for i, (lbl, val) in enumerate(zip(labels, values)):
+        lc = meta.rows[i].cells[0]
+        vc = meta.rows[i].cells[1]
+        lp = lc.paragraphs[0]
+        vp = vc.paragraphs[0]
+        lr = lp.add_run(lbl)
+        lr.font.bold  = True
+        lr.font.size  = Pt(9)
+        lr.font.color.rgb = GOLD
+        vr = vp.add_run(val)
+        vr.font.size  = Pt(9)
+        vr.font.color.rgb = DARK
+
+    doc.add_paragraph()  # spacer
+
+    # ── Conversation turns ───────────────────────────────────
+    turn_num = 0
+    for msg in history:
+        if msg["role"] == "user":
+            turn_num += 1
+            # Turn header
+            th = doc.add_paragraph()
+            tr = th.add_run(f"Turn {turn_num}  ·  You")
+            tr.font.bold  = True
+            tr.font.size  = Pt(9)
+            tr.font.color.rgb = GOLD
+            tr.font.name  = "Arial"
+
+            # User message box (shaded paragraph)
+            up = doc.add_paragraph()
+            up.paragraph_format.left_indent  = Inches(0.2)
+            up.paragraph_format.right_indent = Inches(0.5)
+            up.paragraph_format.space_after  = Pt(6)
+            ur = up.add_run(msg["content"])
+            ur.font.size  = Pt(10.5)
+            ur.font.color.rgb = DARK
+            ur.font.name  = "Arial"
+
+        else:  # assistant
+            # Strip <think> for export
+            content = msg["content"]
+            if "<think>" in content and "</think>" in content:
+                content = content.split("</think>")[-1].strip()
+
+            elapsed = msg.get("elapsed")
+            ts      = msg.get("ts", "")
+
+            # AI label
+            al = doc.add_paragraph()
+            ar = al.add_run(f"✦ Reasoning Forge  ·  {ts}")
+            ar.font.bold  = True
+            ar.font.size  = Pt(9)
+            ar.font.color.rgb = MUTED
+            ar.font.name  = "Arial"
+
+            # Timing line
+            if elapsed is not None:
+                tl = doc.add_paragraph()
+                tr2 = tl.add_run(f"⏱  Generated in {elapsed_label(elapsed)}")
+                tr2.font.size      = Pt(8.5)
+                tr2.font.italic    = True
+                tr2.font.color.rgb = RGBColor(0xA0, 0x73, 0x2A)
+                tr2.font.name      = "Arial"
+
+            # AI response — split into paragraphs
+            for para_text in re.split(r'\n{2,}', content.strip()):
+                para_text = para_text.strip()
+                if not para_text:
+                    continue
+                rp = doc.add_paragraph()
+                rp.paragraph_format.left_indent  = Inches(0.2)
+                rp.paragraph_format.right_indent = Inches(0.2)
+                rp.paragraph_format.space_after  = Pt(4)
+                rr = rp.add_run(para_text.replace('\n', ' '))
+                rr.font.size  = Pt(10.5)
+                rr.font.color.rgb = DARK
+                rr.font.name  = "Arial"
+
+            # Divider rule
+            div = doc.add_paragraph()
+            div_fmt = div.paragraph_format
+            div_fmt.space_before = Pt(6)
+            div_fmt.space_after  = Pt(6)
+            div.paragraph_format.border_bottom = None
+            # Use bottom border on the paragraph as a visual rule
+            from docx.oxml.ns import qn
+            from docx.oxml   import OxmlElement
+            pPr = div._p.get_or_add_pPr()
+            pBdr = OxmlElement('w:pBdr')
+            bottom = OxmlElement('w:bottom')
+            bottom.set(qn('w:val'),   'single')
+            bottom.set(qn('w:sz'),    '4')
+            bottom.set(qn('w:space'), '1')
+            bottom.set(qn('w:color'), 'D4B896')
+            pBdr.append(bottom)
+            pPr.append(pBdr)
+
+    # ── Footer note ──────────────────────────────────────────
+    doc.add_paragraph()
+    fn = doc.add_paragraph()
+    fnr = fn.add_run("Exported from Reasoning Forge  ·  " + datetime.datetime.now().strftime("%Y-%m-%d"))
+    fnr.font.size      = Pt(8)
+    fnr.font.italic    = True
+    fnr.font.color.rgb = MUTED
+    fn.alignment       = WD_ALIGN_PARAGRAPH.CENTER
+
+    # ── Serialize to bytes ───────────────────────────────────
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    return buf.read()
 
 
 # ==============================
@@ -295,7 +442,6 @@ with st.sidebar:
         label_visibility="collapsed"
     )
 
-    # Extract & cache file context when files change
     current_names = [f.name for f in uploaded_files] if uploaded_files else []
     if current_names != st.session_state.file_names:
         if uploaded_files:
@@ -315,22 +461,20 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Clear conversation
     if st.button("🗑 Clear Conversation"):
         st.session_state.messages = []
         st.rerun()
 
-    # Download full conversation
     if st.session_state.messages:
-        download_content = build_download_text(
+        docx_bytes = build_word_doc(
             st.session_state.messages, PROVIDER, st.session_state.file_names
         )
-        filename = f"reasoning_forge_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        filename = f"reasoning_forge_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
         st.download_button(
-            label="⬇ Download Conversation",
-            data=download_content,
+            label="⬇ Download as Word Doc",
+            data=docx_bytes,
             file_name=filename,
-            mime="text/plain"
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
 
 # ==============================
@@ -353,14 +497,28 @@ for msg in st.session_state.messages:
         st.markdown("<p class='bubble-label label-user'>You</p>", unsafe_allow_html=True)
         st.markdown(f"<div class='bubble-user'>{html.escape(msg['content'])}</div>", unsafe_allow_html=True)
     else:
-        # Strip <think> for display
         content = msg["content"]
         if "<think>" in content and "</think>" in content:
             content = content.split("</think>")[-1].strip()
+
+        elapsed = msg.get("elapsed")
+        ts      = msg.get("ts", "")
+
         st.markdown("<p class='bubble-label label-ai'>✦ Reasoning Forge</p>", unsafe_allow_html=True)
         st.markdown(f"<div class='bubble-ai'>{format_for_display(content)}</div>", unsafe_allow_html=True)
 
-# Spacing before input
+        # Timing badge under the bubble
+        if elapsed is not None:
+            bw  = bar_width(elapsed)
+            lbl = elapsed_label(elapsed)
+            st.markdown(
+                f"<div class='timing-badge'>"
+                f"<span class='timing-bar' style='width:{bw}px'></span>"
+                f"⏱ {lbl} &nbsp;·&nbsp; {ts}"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+
 if st.session_state.messages:
     st.markdown("<hr class='turn-divider'>", unsafe_allow_html=True)
 
@@ -385,18 +543,22 @@ if send:
     if not user_query.strip():
         st.warning("Please enter a message.")
     else:
-        # Append user message to history
-        st.session_state.messages.append({"role": "user", "content": user_query.strip()})
+        ts_now = datetime.datetime.now().strftime("%d %b %Y, %H:%M")
+        st.session_state.messages.append({
+            "role": "user", "content": user_query.strip(),
+            "elapsed": None, "ts": ts_now
+        })
 
         with st.spinner(f"{PROVIDER} is thinking..."):
-            reply = get_llm_response(
+            reply, elapsed = get_llm_response(
                 st.session_state.messages,
                 st.session_state.file_context,
                 PROVIDER
             )
 
-        # Append assistant reply to history
-        st.session_state.messages.append({"role": "assistant", "content": reply})
+        st.session_state.messages.append({
+            "role": "assistant", "content": reply,
+            "elapsed": elapsed, "ts": ts_now
+        })
 
-        # Rerun to re-render full chat
         st.rerun()
