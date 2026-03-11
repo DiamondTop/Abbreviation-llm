@@ -106,3 +106,81 @@ def get_llm_response(prompt, provider):
             response = client.chat.completions.create(
                 model="deepseek/deepseek-r1",
                 messages=[{"role": "user", "content": prompt}]
+            )
+            return response.choices[0].message.content
+
+        elif "OpenAI" in provider:
+            client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            response = client.chat.completions.create(
+                model="o1-mini",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response.choices[0].message.content
+
+        elif "Gemini" in provider:
+            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+            model = genai.GenerativeModel("gemini-2.0-flash")
+            response = model.generate_content(prompt)
+            return response.text
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+# ==============================
+# SIDEBAR
+# ==============================
+with st.sidebar:
+    st.markdown("### ✦ Settings")
+    PROVIDER = st.selectbox(
+        "Reasoning Engine",
+        ["DeepSeek R1 (Reasoning Expert)", "OpenAI o1-mini (Logic Focused)", "Gemini 2.0 Flash"]
+    )
+    
+    st.markdown("---")
+    uploaded_file = st.file_uploader(
+        "Attach Context (Docs/Images)", 
+        type=["pdf", "docx", "txt", "png", "jpg", "jpeg"]
+    )
+
+# ==============================
+# MAIN INTERFACE
+# ==============================
+st.markdown("""
+<h1 style="font-family:'Cormorant Garamond'; font-size:3.5rem; font-weight:300;">
+    Reasoning <em style="color:#c9a84c; font-style:italic;">Forge</em>
+</h1>
+""", unsafe_allow_html=True)
+
+user_query = st.text_area(
+    "Define your problem:",
+    height=200,
+    placeholder="Ask a complex question or explain what to do with the uploaded file..."
+)
+
+if st.button("✦ Start Reasoning"):
+    if not user_query:
+        st.warning("Please enter a question or instruction.")
+    else:
+        # Combine Text Area + Uploaded File Data
+        final_prompt = user_query
+        if uploaded_file:
+            with st.spinner("Processing attachment..."):
+                context_text = extract_text(uploaded_file)
+                final_prompt = f"CONTEXT FROM FILE:\n{context_text}\n\nUSER QUESTION:\n{user_query}"
+
+        with st.spinner(f"{PROVIDER} is analyzing..."):
+            answer = get_llm_response(final_prompt, PROVIDER)
+            
+            st.markdown("---")
+            st.markdown("### ✦ Analysis Result")
+            
+            # Handle the <think> tags for models like DeepSeek
+            if "<think>" in answer:
+                parts = answer.split("</think>")
+                thought_process = parts[0].replace("<think>", "").strip()
+                final_answer = parts[1].strip()
+                
+                with st.expander("View Deep Reasoning Process", expanded=True):
+                    st.markdown(f"*{thought_process}*")
+                st.markdown(f"<div class='reasoning-box'>{final_answer}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div class='reasoning-box'>{answer}</div>", unsafe_allow_html=True)
