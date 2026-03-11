@@ -18,42 +18,31 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Apply your custom luxury dark/gold theme
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
-
 :root {
-    --bg:         #0b0c0f;
-    --bg2:        #111318;
-    --bg3:        #1c1f28;
-    --gold:       #c9a84c;
-    --gold-light: #e8c87a;
-    --border:     rgba(201,168,76,0.22);
-    --text:       #f0ede6;
-    --muted:      #9a958f;
-    --serif:      'Cormorant Garamond', Georgia, serif;
-    --sans:       'DM Sans', sans-serif;
-    --mono:       'DM Mono', monospace;
+    --bg: #0b0c0f;
+    --bg2: #111318;
+    --gold: #c9a84c;
+    --border: rgba(201,168,76,0.22);
+    --text: #f0ede6;
+    --sans: 'DM Sans', sans-serif;
 }
-
 html, body, [data-testid="stAppViewContainer"], .stApp {
     background-color: var(--bg) !important;
     color: var(--text) !important;
     font-family: var(--sans) !important;
 }
-
 [data-testid="stSidebar"] {
     background: var(--bg2) !important;
     border-right: 1px solid var(--border) !important;
 }
-
 .stTextArea textarea {
     background: var(--bg2) !important;
     border: 1px solid var(--border) !important;
     color: var(--text) !important;
 }
-
 .stButton > button {
     background: var(--gold) !important;
     color: #0b0c0f !important;
@@ -61,7 +50,6 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     font-weight: 600 !important;
     width: 100%;
 }
-
 .reasoning-box {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -98,7 +86,6 @@ def extract_text(file):
 
 def get_llm_response(prompt, provider):
     try:
-        # 1. DeepSeek R1
         if "DeepSeek" in provider:
             client = OpenAI(
                 api_key=st.secrets["OPENROUTER_API_KEY"],
@@ -109,8 +96,6 @@ def get_llm_response(prompt, provider):
                 messages=[{"role": "user", "content": prompt}]
             )
             return response.choices[0].message.content
-
-        # 2. OpenAI o1-mini
         elif "OpenAI" in provider:
             client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
             response = client.chat.completions.create(
@@ -118,14 +103,11 @@ def get_llm_response(prompt, provider):
                 messages=[{"role": "user", "content": prompt}]
             )
             return response.choices[0].message.content
-
-        # 3. Gemini 2.0 Flash
         elif "Gemini" in provider:
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             model = genai.GenerativeModel("gemini-2.0-flash")
             response = model.generate_content(prompt)
             return response.text
-            
     except Exception as e:
         return f"Error connecting to {provider}: {str(e)}"
 
@@ -134,57 +116,3 @@ def get_llm_response(prompt, provider):
 # ==============================
 with st.sidebar:
     st.markdown("### ✦ Settings")
-    PROVIDER = st.selectbox(
-        "Reasoning Engine",
-        ["DeepSeek R1 (Reasoning Expert)", "OpenAI o1-mini (Logic Focused)", "Gemini 2.0 Flash"]
-    )
-    
-    st.markdown("---")
-    uploaded_file = st.file_uploader(
-        "Attach Context (Docs/Images)", 
-        type=["pdf", "docx", "txt", "png", "jpg", "jpeg"]
-    )
-
-# ==============================
-# MAIN INTERFACE
-# ==============================
-st.markdown("""
-<h1 style="font-family:'Cormorant Garamond'; font-size:3.5rem; font-weight:300;">
-    Reasoning <em style="color:#c9a84c; font-style:italic;">Forge</em>
-</h1>
-""", unsafe_allow_html=True)
-
-user_query = st.text_area(
-    "Define your problem:",
-    height=200,
-    placeholder="Ask a complex question or explain what to do with the uploaded file..."
-)
-
-if st.button("✦ Start Reasoning"):
-    if not user_query:
-        st.warning("Please enter a question or instruction.")
-    else:
-        # Combine Text Area + Uploaded File Data
-        final_prompt = user_query
-        if uploaded_file:
-            with st.spinner("Processing attachment..."):
-                context_text = extract_text(uploaded_file)
-                final_prompt = f"CONTEXT FROM FILE:\n{context_text}\n\nUSER QUESTION:\n{user_query}"
-
-        with st.spinner(f"{PROVIDER} is analyzing..."):
-            answer = get_llm_response(final_prompt, PROVIDER)
-            
-            st.markdown("---")
-            st.markdown("### ✦ Analysis Result")
-            
-            # Handle the <think> tags for models like DeepSeek
-            if "<think>" in answer:
-                parts = answer.split("</think>")
-                thought_process = parts[0].replace("<think>", "").strip()
-                final_answer = parts[1].strip()
-                
-                with st.expander("View Deep Reasoning Process", expanded=True):
-                    st.markdown(f"*{thought_process}*")
-                st.markdown(f"<div class='reasoning-box'>{final_answer}</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div class='reasoning-box'>{answer}</div>", unsafe_allow_html=True)
