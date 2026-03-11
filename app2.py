@@ -423,6 +423,163 @@ def build_word_doc(history: list, provider: str, file_names: list) -> bytes:
 
 
 # ==============================
+# EXCEL EXPORT
+# ==============================
+def build_excel_doc(history: list, provider: str, file_names: list) -> bytes:
+    """Generate a structured .xlsx with two sheets and return as bytes."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = Workbook()
+
+    GOLD_HEX   = "A0732A"
+    GOLD_LIGHT = "F5ECD7"
+    WHITE      = "FFFFFF"
+    DARK       = "1A1612"
+    USER_BG    = "FFF8EE"
+
+    thin   = Side(style="thin", color="D4B896")
+    border = Border(top=thin, bottom=thin, left=thin, right=thin)
+
+    # ── Sheet 1: Full Conversation ───────────────────────────
+    ws = wb.active
+    ws.title = "Conversation"
+
+    # Title bar
+    ws.merge_cells("A1:E1")
+    c = ws["A1"]
+    c.value = "Reasoning Forge — Conversation Export"
+    c.font  = Font(name="Arial", bold=True, size=15, color=GOLD_HEX)
+    c.fill  = PatternFill("solid", fgColor=GOLD_LIGHT)
+    c.alignment = Alignment(horizontal="left", vertical="center")
+    ws.row_dimensions[1].height = 28
+
+    # Metadata rows
+    meta = [
+        ("Date",           datetime.datetime.now().strftime("%d %B %Y, %H:%M:%S")),
+        ("Engine",         provider),
+        ("Files Attached", ", ".join(file_names) if file_names else "None"),
+        ("Total Turns",    str(sum(1 for m in history if m["role"] == "user"))),
+    ]
+    for r, (lbl, val) in enumerate(meta, start=2):
+        lc = ws.cell(row=r, column=1, value=lbl)
+        vc = ws.cell(row=r, column=2, value=val)
+        lc.font = Font(name="Arial", bold=True, size=9, color=GOLD_HEX)
+        vc.font = Font(name="Arial", size=9, color=DARK)
+        ws.merge_cells(f"B{r}:E{r}")
+
+    ws.row_dimensions[6].height = 8  # spacer
+
+    # Column headers
+    hdr_row = 7
+    headers    = ["Turn", "Role", "Timestamp", "Response Time", "Message"]
+    col_widths = [6, 12, 22, 16, 90]
+    for col, (hdr, w) in enumerate(zip(headers, col_widths), start=1):
+        cell = ws.cell(row=hdr_row, column=col, value=hdr)
+        cell.font      = Font(name="Arial", bold=True, size=10, color=WHITE)
+        cell.fill      = PatternFill("solid", fgColor=GOLD_HEX)
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border    = border
+        ws.column_dimensions[get_column_letter(col)].width = w
+    ws.row_dimensions[hdr_row].height = 22
+
+    # Data rows
+    turn_num = 0
+    data_row = hdr_row + 1
+    for msg in history:
+        role    = msg["role"]
+        content = msg["content"]
+        if "<think>" in content and "</think>" in content:
+            content = content.split("</think>")[-1].strip()
+        content = content.strip()
+
+        if role == "user":
+            turn_num  += 1
+            role_label = "You"
+            bg         = USER_BG
+            time_val   = "—"
+        else:
+            role_label = "✦ AI"
+            bg         = WHITE
+            elapsed    = msg.get("elapsed")
+            time_val   = elapsed_label(elapsed) if elapsed is not None else "—"
+
+        row_fill = PatternFill("solid", fgColor=bg)
+        values   = [turn_num if role == "user" else "", role_label,
+                    msg.get("ts", ""), time_val, content]
+
+        for col, val in enumerate(values, start=1):
+            cell = ws.cell(row=data_row, column=col, value=val)
+            cell.fill      = row_fill
+            cell.border    = border
+            cell.alignment = Alignment(vertical="top", wrap_text=True,
+                                       horizontal="center" if col < 5 else "left")
+            cell.font      = Font(
+                name="Arial", size=9,
+                color=GOLD_HEX if col == 2 else DARK,
+                bold=(col == 2)
+            )
+
+        # Auto row height based on content length
+        lines = max(1, len(content) // 100 + content.count('\n') + 1)
+        ws.row_dimensions[data_row].height = min(max(20, lines * 15), 200)
+        data_row += 1
+
+    ws.freeze_panes = f"A{hdr_row + 1}"
+
+    # ── Sheet 2: Timing Summary ──────────────────────────────
+    ws2 = wb.create_sheet("Timing Summary")
+    for col, w in zip(["A","B","C","D"], [8, 24, 30, 20]):
+        ws2.column_dimensions[col].width = w
+
+    ws2.merge_cells("A1:D1")
+    t = ws2["A1"]
+    t.value = "Response Timing by Turn"
+    t.font  = Font(name="Arial", bold=True, size=13, color=GOLD_HEX)
+    t.fill  = PatternFill("solid", fgColor=GOLD_LIGHT)
+    t.alignment = Alignment(horizontal="left", vertical="center")
+    ws2.row_dimensions[1].height = 26
+
+    for col, hdr in enumerate(["Turn", "Timestamp", "Engine", "Response Time"], start=1):
+        cell = ws2.cell(row=2, column=col, value=hdr)
+        cell.font      = Font(name="Arial", bold=True, size=10, color=WHITE)
+        cell.fill      = PatternFill("solid", fgColor=GOLD_HEX)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border    = border
+    ws2.row_dimensions[2].height = 20
+
+    turn_num2 = 0
+    row2 = 3
+    for msg in history:
+        if msg["role"] == "user":
+            turn_num2 += 1
+            continue
+        elapsed  = msg.get("elapsed")
+        row_bg   = "FFF8EE" if row2 % 2 == 0 else WHITE
+        for col, val in enumerate([
+            turn_num2,
+            msg.get("ts", ""),
+            provider,
+            elapsed_label(elapsed) if elapsed is not None else "—"
+        ], start=1):
+            cell = ws2.cell(row=row2, column=col, value=val)
+            cell.font      = Font(name="Arial", size=9, color=DARK)
+            cell.fill      = PatternFill("solid", fgColor=row_bg)
+            cell.alignment = Alignment(horizontal="center")
+            cell.border    = border
+        ws2.row_dimensions[row2].height = 18
+        row2 += 1
+
+    ws2.freeze_panes = "A3"
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.read()
+
+
+# ==============================
 # SIDEBAR
 # ==============================
 with st.sidebar:
@@ -466,15 +623,29 @@ with st.sidebar:
         st.rerun()
 
     if st.session_state.messages:
+        st.markdown("**⬇ Export Conversation**")
+        ts_stamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+
+        # Word doc
         docx_bytes = build_word_doc(
             st.session_state.messages, PROVIDER, st.session_state.file_names
         )
-        filename = f"reasoning_forge_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
         st.download_button(
-            label="⬇ Download as Word Doc",
+            label="📄 Download as Word (.docx)",
             data=docx_bytes,
-            file_name=filename,
+            file_name=f"reasoning_forge_{ts_stamp}.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+
+        # Excel doc
+        xlsx_bytes = build_excel_doc(
+            st.session_state.messages, PROVIDER, st.session_state.file_names
+        )
+        st.download_button(
+            label="📊 Download as Excel (.xlsx)",
+            data=xlsx_bytes,
+            file_name=f"reasoning_forge_{ts_stamp}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
 # ==============================
