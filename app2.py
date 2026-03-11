@@ -176,6 +176,8 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
 if "messages"     not in st.session_state: st.session_state.messages     = []
 if "file_context" not in st.session_state: st.session_state.file_context = ""
 if "file_names"   not in st.session_state: st.session_state.file_names   = []
+# FIX: persist the typed query so file uploads don't wipe it
+if "pending_query" not in st.session_state: st.session_state.pending_query = ""
 
 # ==============================
 # HELPERS
@@ -332,7 +334,8 @@ with st.sidebar:
     st.markdown("---")
 
     if st.button("🗑 Clear Conversation"):
-        st.session_state.messages = []
+        st.session_state.messages     = []
+        st.session_state.pending_query = ""
         st.rerun()
 
     if st.session_state.messages:
@@ -367,7 +370,6 @@ for msg in st.session_state.messages:
         st.markdown("<p class='bubble-label label-user'>You</p>", unsafe_allow_html=True)
         st.markdown(f"<div class='bubble-user'>{html.escape(msg['content'])}</div>", unsafe_allow_html=True)
     else:
-        # Strip <think> block for display
         content = msg["content"]
         if "<think>" in content and "</think>" in content:
             content = content.split("</think>")[-1].strip()
@@ -377,7 +379,6 @@ for msg in st.session_state.messages:
         st.markdown("<p class='bubble-label label-ai'>✦ Reasoning Forge</p>", unsafe_allow_html=True)
         st.markdown(f"<div class='bubble-ai'>{format_for_display(content)}</div>", unsafe_allow_html=True)
 
-        # Timing badge rendered directly below the bubble
         if elapsed is not None:
             bar_px = min(int(elapsed * 8), 140)
             st.markdown(
@@ -391,29 +392,24 @@ for msg in st.session_state.messages:
 if st.session_state.messages:
     st.markdown("<hr class='turn-divider'>", unsafe_allow_html=True)
 
-# ── Input ────────────────────────────────────────────────────
+# ── Input — value bound to session_state so uploads don't wipe it ──
 user_query = st.text_area(
     "Your message:" if st.session_state.messages else "Define your problem:",
     height=130,
     placeholder="Continue the conversation, or ask a follow-up question...",
-    key="user_input"
+    key="pending_query",   # bound directly to st.session_state.pending_query
 )
 
-col1, col2 = st.columns([3, 1])
-with col1:
-    send = st.button("✦ Send" if st.session_state.messages else "✦ Start Reasoning")
-with col2:
-    if st.session_state.messages and st.button("↩ New Chat"):
-        st.session_state.messages = []
-        st.rerun()
+send = st.button("✦ Send" if st.session_state.messages else "✦ Start Reasoning")
 
 # ── Handle send ──────────────────────────────────────────────
 if send:
-    if not user_query.strip():
+    query = st.session_state.pending_query.strip()
+    if not query:
         st.warning("Please enter a message.")
     else:
         st.session_state.messages.append({
-            "role": "user", "content": user_query.strip(), "elapsed": None
+            "role": "user", "content": query, "elapsed": None
         })
 
         with st.spinner(f"{PROVIDER} is thinking..."):
@@ -427,4 +423,6 @@ if send:
             "role": "assistant", "content": reply, "elapsed": elapsed
         })
 
+        # Clear the input box after sending
+        st.session_state.pending_query = ""
         st.rerun()
