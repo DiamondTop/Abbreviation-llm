@@ -93,4 +93,99 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     border-radius: 4px;
     padding: 0.25rem 0.75rem;
     font-size: 0.8rem;
-    color
+    color: var(--gold);
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ==============================
+# HELPERS
+# ==============================
+def extract_text(file) -> tuple[str, str]:
+    ext = file.name.split(".")[-1].lower()
+    try:
+        if ext == "pdf":
+            reader = PdfReader(file)
+            return "\n".join(p.extract_text() or "" for p in reader.pages), "PDF"
+        elif ext == "docx":
+            doc = Document(file)
+            return "\n".join(p.text for p in doc.paragraphs), "DOCX"
+        elif ext in ["xlsx", "xls"]:
+            xls = pd.ExcelFile(file)
+            sheets = []
+            for name in xls.sheet_names:
+                df = xls.parse(name).dropna(how="all").fillna("")
+                sheets.append(f"[Sheet: {name}]\n{df.to_markdown(index=False)}")
+            return "\n\n".join(sheets), "Excel"
+        elif ext == "csv":
+            return pd.read_csv(file).fillna("").to_markdown(index=False), "CSV"
+        elif ext in ["png", "jpg", "jpeg"]:
+            return pytesseract.image_to_string(Image.open(file)), "Image (OCR)"
+        else:
+            return file.read().decode("utf-8"), "Text"
+    except Exception as e:
+        return f"Error: {e}", "Unknown"
+
+def get_llm_response(prompt, provider):
+    try:
+        if "DeepSeek" in provider:
+            client = OpenAI(api_key=st.secrets["OPENROUTER_API_KEY"], base_url="https://openrouter.ai/api/v1")
+            response = client.chat.completions.create(model="deepseek/deepseek-r1", messages=[{"role": "user", "content": prompt}])
+            return response.choices[0].message.content
+        elif "OpenAI" in provider:
+            client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            response = client.chat.completions.create(model="o1-mini", messages=[{"role": "user", "content": prompt}])
+            return response.choices[0].message.content
+        elif "Gemini" in provider:
+            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+            model = genai.GenerativeModel("gemini-2.0-flash")
+            return model.generate_content(prompt).text
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+# ==============================
+# SIDEBAR
+# ==============================
+with st.sidebar:
+    st.markdown("### ✦ Settings")
+    PROVIDER = st.selectbox("Reasoning Engine", ["DeepSeek R1 (Reasoning Expert)", "OpenAI o1-mini (Logic Focused)", "Gemini 2.0 Flash"])
+    st.markdown("---")
+    st.markdown("**Attach Context Files**")
+    uploaded_files = st.file_uploader("Upload files", type=["pdf", "docx", "txt", "png", "jpg", "jpeg", "xlsx", "xls", "csv"], accept_multiple_files=True, label_visibility="collapsed")
+    
+    if uploaded_files:
+        for f in uploaded_files:
+            st.markdown(f"<span class='file-badge'>📎 {f.name}</span>", unsafe_allow_html=True)
+
+# ==============================
+# MAIN INTERFACE
+# ==============================
+st.markdown("<h1 style='font-family:Cormorant Garamond; font-size:3.5rem; font-weight:300;'>Reasoning <em style='color:#a0732a; font-style:italic;'>Forge</em></h1>", unsafe_allow_html=True)
+
+user_query = st.text_area("Define your problem:", height=200, placeholder="Ask a question about the uploaded files...")
+
+if st.button("✦ Start Reasoning"):
+    if not user_query:
+        st.warning("Please enter a question.")
+    else:
+        combined_context = ""
+        if uploaded_files:
+            with st.spinner(f"Extracting data from {len(uploaded_files)} files..."):
+                for f in uploaded_files:
+                    f.seek(0)
+                    text, ftype = extract_text(f)
+                    combined_context += f"\n\n--- FILE: {f.name} ({ftype}) ---\n{text}\n"
+        
+        final_prompt = f"CONTEXT:\n{combined_context}\n\nUSER QUESTION:\n{user_query}" if combined_context else user_query
+
+        with st.spinner(f"{PROVIDER} is thinking..."):
+            answer = get_llm_response(final_prompt, PROVIDER)
+            st.markdown("---")
+            if "<think>" in answer:
+                parts = answer.split("</think>")
+                st.expander("View Reasoning Process", expanded=True).markdown(f"*{parts[0].replace('<think>', '').strip()}*")
+                st.markdown(f"<div class='reasoning-box'>{parts[1].strip()}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div class='reasoning-box'>{answer}</div>", unsafe_allow_html=True)
