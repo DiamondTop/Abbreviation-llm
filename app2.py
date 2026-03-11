@@ -1,41 +1,166 @@
 import streamlit as st
+import re
 import requests
+from PIL import Image
+import pytesseract
+from pypdf import PdfReader
+from docx import Document
+import pandas as pd
 from openai import OpenAI
 import google.generativeai as genai
 
 # ==============================
-# PAGE CONFIG & STYLES (Reusing your elegant gold/dark theme)
+# PAGE CONFIG & STYLES
 # ==============================
-st.set_page_config(page_title="Reasoning Forge", page_icon="🧠", layout="wide")
+st.set_page_config(
+    page_title="Reasoning Forge",
+    page_icon="🧠",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# (Keep your existing CSS block here - it's excellent for the brand)
+# Apply your custom luxury dark/gold theme
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+    --bg:         #0b0c0f;
+    --bg2:        #111318;
+    --bg3:        #1c1f28;
+    --gold:       #c9a84c;
+    --gold-light: #e8c87a;
+    --border:     rgba(201,168,76,0.22);
+    --text:       #f0ede6;
+    --muted:      #9a958f;
+    --serif:      'Cormorant Garamond', Georgia, serif;
+    --sans:       'DM Sans', sans-serif;
+    --mono:       'DM Mono', monospace;
+}
+
+html, body, [data-testid="stAppViewContainer"], .stApp {
+    background-color: var(--bg) !important;
+    color: var(--text) !important;
+    font-family: var(--sans) !important;
+}
+
+[data-testid="stSidebar"] {
+    background: var(--bg2) !important;
+    border-right: 1px solid var(--border) !important;
+}
+
+.stTextArea textarea {
+    background: var(--bg2) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+
+.stButton > button {
+    background: var(--gold) !important;
+    color: #0b0c0f !important;
+    border-radius: 3px !important;
+    font-weight: 600 !important;
+    width: 100%;
+}
+
+.reasoning-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2rem;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    position: relative;
+}
+.reasoning-box::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--gold), transparent);
+}
+
+.file-badge {
+    display: inline-block;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--gold);
+    margin-top: 0.5rem;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ==============================
-# SIDEBAR - LLM SELECTION
+# HELPERS
 # ==============================
-with st.sidebar:
-    st.markdown("### ✦ Model Selection")
-    
-    # Dropdown for 3 different LLM providers
-    PROVIDER = st.selectbox(
-        "Choose Reasoning Engine",
-        [
-            "DeepSeek R1 (Reasoning Expert)",
-            "OpenAI o1-mini (Logic Focused)",
-            "Gemini 2.0 Flash (Speed & Context)"
-        ]
-    )
-    
-    st.info("Reasoning models take longer to respond as they 'think' through the problem step-by-step.")
-
-# ==============================
-# LLM CLIENT SETUP
-# ==============================
-def get_llm_response(prompt, provider):
-    """Handles logic for the 3 different selected LLMs"""
-    
+def extract_text(file) -> tuple[str, str]:
+    """
+    Returns (extracted_text, file_type_label).
+    Supports: PDF, DOCX, TXT, PNG/JPG/JPEG (OCR), XLS, XLSX, CSV.
+    """
+    ext = file.name.split(".")[-1].lower()
     try:
-        # 1. DeepSeek R1 via OpenRouter
+        # ── PDF ──────────────────────────────────────────────
+        if ext == "pdf":
+            reader = PdfReader(file)
+            pages_text = []
+            for i, page in enumerate(reader.pages):
+                page_text = page.extract_text() or ""
+                if page_text.strip():
+                    pages_text.append(f"[Page {i+1}]\n{page_text}")
+            return "\n\n".join(pages_text), "PDF"
+
+        # ── Word Document ─────────────────────────────────────
+        elif ext == "docx":
+            doc = Document(file)
+            paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+
+            # Also extract tables from the docx
+            table_texts = []
+            for i, table in enumerate(doc.tables):
+                rows = []
+                for row in table.rows:
+                    rows.append(" | ".join(cell.text.strip() for cell in row.cells))
+                table_texts.append(f"[Table {i+1}]\n" + "\n".join(rows))
+
+            combined = "\n".join(paragraphs)
+            if table_texts:
+                combined += "\n\n" + "\n\n".join(table_texts)
+            return combined, "DOCX"
+
+        # ── Excel / CSV ───────────────────────────────────────
+        elif ext in ["xlsx", "xls"]:
+            xls = pd.ExcelFile(file)
+            sheet_texts = []
+            for sheet_name in xls.sheet_names:
+                df = xls.parse(sheet_name)
+                df = df.dropna(how="all").fillna("")      # clean empty rows/cells
+                sheet_md = df.to_markdown(index=False)   # clean table-style text
+                sheet_texts.append(f"[Sheet: {sheet_name}]\n{sheet_md}")
+            return "\n\n".join(sheet_texts), "Excel"
+
+        elif ext == "csv":
+            df = pd.read_csv(file).fillna("")
+            return df.to_markdown(index=False), "CSV"
+
+        # ── Images (OCR) ──────────────────────────────────────
+        elif ext in ["png", "jpg", "jpeg"]:
+            img = Image.open(file)
+            text = pytesseract.image_to_string(img)
+            return text, "Image (OCR)"
+
+        # ── Plain Text ────────────────────────────────────────
+        else:
+            return file.read().decode("utf-8"), "Text"
+
+    except Exception as e:
+        st.error(f"Extraction error: {e}")
+        return "", "Unknown"
+
+
+def get_llm_response(prompt, provider):
+    try:
+        # 1. DeepSeek R1
         if "DeepSeek" in provider:
             client = OpenAI(
                 api_key=st.secrets["OPENROUTER_API_KEY"],
@@ -51,7 +176,7 @@ def get_llm_response(prompt, provider):
         elif "OpenAI" in provider:
             client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
             response = client.chat.completions.create(
-                model="o1-mini", # o1 models use 'developer' or 'user' roles specifically
+                model="o1-mini",
                 messages=[{"role": "user", "content": prompt}]
             )
             return response.choices[0].message.content
@@ -64,7 +189,33 @@ def get_llm_response(prompt, provider):
             return response.text
 
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error connecting to {provider}: {str(e)}"
+
+
+# ==============================
+# SIDEBAR
+# ==============================
+with st.sidebar:
+    st.markdown("### ✦ Settings")
+    PROVIDER = st.selectbox(
+        "Reasoning Engine",
+        ["DeepSeek R1 (Reasoning Expert)", "OpenAI o1-mini (Logic Focused)", "Gemini 2.0 Flash"]
+    )
+
+    st.markdown("---")
+    st.markdown("**Attach Context File**")
+    st.caption("Supported: PDF · DOCX · XLS · XLSX · CSV · PNG · JPG · TXT")
+    uploaded_file = st.file_uploader(
+        "Upload file",
+        type=["pdf", "docx", "txt", "png", "jpg", "jpeg", "xlsx", "xls", "csv"],
+        label_visibility="collapsed"
+    )
+
+    # Show a preview badge when file is loaded
+    if uploaded_file:
+        _, ftype = extract_text(uploaded_file)
+        uploaded_file.seek(0)   # reset pointer after peek
+        st.markdown(f"<span class='file-badge'>📎 {uploaded_file.name} · {ftype}</span>", unsafe_allow_html=True)
 
 # ==============================
 # MAIN INTERFACE
@@ -75,32 +226,47 @@ st.markdown("""
 </h1>
 """, unsafe_allow_html=True)
 
-user_input = st.text_area(
-    "Enter a complex problem, math equation, or logic puzzle:",
-    height=250,
-    placeholder="Ex: How many R's are in the word Strawberry? Explain your step-by-step logic."
+user_query = st.text_area(
+    "Define your problem:",
+    height=200,
+    placeholder="Ask a complex question or explain what to do with the uploaded file..."
 )
 
 if st.button("✦ Start Reasoning"):
-    if user_input:
-        with st.spinner(f"The {PROVIDER} is thinking..."):
-            answer = get_llm_response(user_input, PROVIDER)
-            
-            # Formatting the output
-            st.markdown("<hr/>", unsafe_allow_html=True)
-            st.markdown("### ✦ Final Response")
-            
-            # Reasoning models often return <think> tags. 
-            # This logic separates the 'thought' from the 'answer'.
+    if not user_query:
+        st.warning("Please enter a question or instruction.")
+    else:
+        final_prompt = user_query
+
+        if uploaded_file:
+            uploaded_file.seek(0)   # ensure pointer is at start before extraction
+            with st.spinner("Processing attachment..."):
+                context_text, ftype = extract_text(uploaded_file)
+
+            if context_text.strip():
+                final_prompt = (
+                    f"CONTEXT FROM FILE ({ftype}: {uploaded_file.name}):\n"
+                    f"{context_text}\n\n"
+                    f"USER QUESTION:\n{user_query}"
+                )
+                st.info(f"✔ Context loaded from **{uploaded_file.name}** ({ftype}) — {len(context_text):,} characters extracted.")
+            else:
+                st.warning("Could not extract text from the file. Proceeding with your question only.")
+
+        with st.spinner(f"{PROVIDER} is analyzing..."):
+            answer = get_llm_response(final_prompt, PROVIDER)
+
+            st.markdown("---")
+            st.markdown("### ✦ Analysis Result")
+
+            # Handle the <think> tags for models like DeepSeek
             if "<think>" in answer:
                 parts = answer.split("</think>")
                 thought_process = parts[0].replace("<think>", "").strip()
-                final_answer = parts[1].strip()
-                
-                with st.expander("View Internal Thought Process", expanded=True):
-                    st.write(thought_process)
-                st.markdown(f"<div class='cover-letter-box'>{final_answer}</div>", unsafe_allow_html=True)
+                final_answer = parts[1].strip() if len(parts) > 1 else ""
+
+                with st.expander("View Deep Reasoning Process", expanded=True):
+                    st.markdown(f"*{thought_process}*")
+                st.markdown(f"<div class='reasoning-box'>{final_answer}</div>", unsafe_allow_html=True)
             else:
-                st.markdown(f"<div class='cover-letter-box'>{answer}</div>", unsafe_allow_html=True)
-    else:
-        st.warning("Please enter a prompt first.")
+                st.markdown(f"<div class='reasoning-box'>{answer}</div>", unsafe_allow_html=True)
