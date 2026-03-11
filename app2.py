@@ -251,7 +251,7 @@ st.markdown(
 )
 st.markdown(
     "<p style='color:#6b6560; margin-top:0.25rem; margin-bottom:1.5rem;'>"
-    "Powered by OpenRouter · Ask anything · Upload any file</p>",
+    "Powered by AI · Seek reasoning · Upload any files</p>",
     unsafe_allow_html=True
 )
 
