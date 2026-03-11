@@ -49,11 +49,55 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     background: var(--bg2) !important;
     border-right: 1px solid var(--border) !important;
 }
-
 [data-testid="stSidebar"] * {
     color: var(--text) !important;
 }
 
+/* ── Chat bubbles ── */
+.bubble-user {
+    background: var(--gold);
+    color: #ffffff;
+    border-radius: 16px 16px 4px 16px;
+    padding: 0.85rem 1.2rem;
+    margin: 0.5rem 0 0.5rem 15%;
+    line-height: 1.65;
+    font-size: 0.95rem;
+    word-wrap: break-word;
+}
+
+.bubble-ai {
+    background: var(--bg2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 16px 16px 16px 4px;
+    padding: 0.85rem 1.2rem;
+    margin: 0.5rem 15% 0.5rem 0;
+    line-height: 1.75;
+    font-size: 0.95rem;
+    word-wrap: break-word;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    position: relative;
+}
+.bubble-ai::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    border-radius: 16px 16px 0 0;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light), transparent);
+}
+.bubble-ai p { margin: 0 0 0.6em 0; }
+.bubble-ai p:last-child { margin-bottom: 0; }
+
+.bubble-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    margin-bottom: 0.2rem;
+}
+.label-user { text-align: right; margin-right: 0.2rem; }
+.label-ai   { text-align: left;  margin-left:  0.2rem; }
+
+/* ── Input area ── */
 .stTextArea textarea {
     background: var(--bg2) !important;
     border: 1px solid var(--border) !important;
@@ -61,6 +105,7 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     border-radius: 6px !important;
 }
 
+/* ── Buttons ── */
 .stButton > button {
     background: var(--gold) !important;
     color: #ffffff !important;
@@ -70,11 +115,8 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     width: 100%;
     transition: background 0.2s ease !important;
 }
-.stButton > button:hover {
-    background: var(--gold-light) !important;
-}
+.stButton > button:hover { background: var(--gold-light) !important; }
 
-/* Download button — outlined to distinguish from primary */
 .stDownloadButton > button {
     background: transparent !important;
     color: var(--gold) !important;
@@ -89,28 +131,7 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     color: #ffffff !important;
 }
 
-/* FIX: white-space:normal removes giant blank gaps from LLM newlines */
-.reasoning-box {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 2rem;
-    white-space: normal;
-    word-wrap: break-word;
-    line-height: 1.85;
-    color: var(--text);
-    position: relative;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-}
-.reasoning-box::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    border-radius: 8px 8px 0 0;
-    background: linear-gradient(90deg, var(--gold), var(--gold-light), transparent);
-}
-.reasoning-box p {
-    margin: 0 0 0.75em 0;
-}
-
+/* ── File badge ── */
 .file-badge {
     display: block;
     background: var(--bg3);
@@ -123,14 +144,28 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     font-weight: 500;
 }
 
-.result-meta {
-    font-size: 0.78rem;
-    color: var(--muted);
-    margin-bottom: 0.75rem;
-    font-style: italic;
+/* ── Divider between turns ── */
+.turn-divider {
+    border: none;
+    border-top: 1px dashed var(--border);
+    margin: 1rem 0;
 }
 </style>
 """, unsafe_allow_html=True)
+
+# ==============================
+# SESSION STATE INIT
+# ==============================
+if "messages" not in st.session_state:
+    # Each message: {"role": "user"|"assistant", "content": str}
+    st.session_state.messages = []
+
+if "file_context" not in st.session_state:
+    # Extracted file text injected once as a system-level context
+    st.session_state.file_context = ""
+
+if "file_names" not in st.session_state:
+    st.session_state.file_names = []
 
 # ==============================
 # HELPERS
@@ -162,36 +197,33 @@ def extract_text(file) -> tuple[str, str]:
 
 
 def format_for_display(text: str) -> str:
-    """Convert LLM plain-text into clean HTML paragraphs — no giant blank gaps."""
+    """Convert LLM plain-text into clean HTML — no giant blank gaps."""
     escaped = html.escape(text)
-    # Split on 2+ newlines = paragraph break
     paragraphs = re.split(r'\n{2,}', escaped.strip())
     parts = []
     for para in paragraphs:
-        # Single newlines within a paragraph → <br>
         para = para.replace('\n', '<br>')
         parts.append(f"<p>{para}</p>")
     return "".join(parts)
 
 
-def build_download_text(question: str, answer: str, provider: str, files: list) -> str:
-    """Plain-text export of the full session."""
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    file_names = ", ".join(f.name for f in files) if files else "None"
-    div = "=" * 60
-    return (
-        f"REASONING FORGE — EXPORT\n{div}\n"
-        f"Date      : {timestamp}\n"
-        f"Engine    : {provider}\n"
-        f"Files     : {file_names}\n"
-        f"{div}\n\n"
-        f"QUESTION\n{question}\n\n"
-        f"{div}\n\n"
-        f"ANSWER\n{answer}\n"
-    )
+def build_messages_for_api(file_context: str, history: list) -> list:
+    """
+    Build the messages array for the OpenRouter API call.
+    File context is prepended to the very first user message so the
+    model always has it, but we don't repeat it on every turn.
+    """
+    api_messages = []
+    for i, msg in enumerate(history):
+        content = msg["content"]
+        # Attach file context to the first user message only
+        if i == 0 and msg["role"] == "user" and file_context:
+            content = f"CONTEXT FROM FILES:\n{file_context}\n\n---\n\nUSER: {content}"
+        api_messages.append({"role": msg["role"], "content": content})
+    return api_messages
 
 
-def get_llm_response(prompt, provider):
+def get_llm_response(history: list, file_context: str, provider: str) -> str:
     try:
         client = OpenAI(
             api_key=st.secrets["OPENROUTER_API_KEY"],
@@ -207,9 +239,11 @@ def get_llm_response(prompt, provider):
         else:
             model_id = "meta-llama/llama-3.1-8b-instruct:free"
 
+        api_messages = build_messages_for_api(file_context, history)
+
         response = client.chat.completions.create(
             model=model_id,
-            messages=[{"role": "user", "content": prompt}],
+            messages=api_messages,
             extra_headers={
                 "HTTP-Referer": "http://localhost:8501",
                 "X-Title": "Reasoning Forge"
@@ -218,6 +252,27 @@ def get_llm_response(prompt, provider):
         return response.choices[0].message.content
     except Exception as e:
         return f"Error: {str(e)}"
+
+
+def build_download_text(history: list, provider: str, file_names: list) -> str:
+    """Export the full conversation as a plain-text file."""
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    files_str = ", ".join(file_names) if file_names else "None"
+    div = "=" * 60
+    lines = [
+        f"REASONING FORGE — CONVERSATION EXPORT",
+        div,
+        f"Date    : {timestamp}",
+        f"Engine  : {provider}",
+        f"Files   : {files_str}",
+        div, ""
+    ]
+    for i, msg in enumerate(history):
+        role_label = "YOU" if msg["role"] == "user" else "AI"
+        lines.append(f"[{role_label}]\n{msg['content']}\n")
+        if i < len(history) - 1:
+            lines.append("-" * 40)
+    return "\n".join(lines)
 
 
 # ==============================
@@ -229,17 +284,54 @@ with st.sidebar:
         "Reasoning Engine",
         ["Metal-llama (Reasoning Expert)", "nemotron-3 by Nvidia (Logic Focused)", "Stepfun"]
     )
+
     st.markdown("---")
     st.markdown("**Attach Context Files**")
+    st.caption("Files are loaded into every conversation turn automatically.")
     uploaded_files = st.file_uploader(
         "Upload files",
         type=["pdf", "docx", "txt", "png", "jpg", "jpeg", "xlsx", "xls", "csv"],
         accept_multiple_files=True,
         label_visibility="collapsed"
     )
+
+    # Extract & cache file context when files change
+    current_names = [f.name for f in uploaded_files] if uploaded_files else []
+    if current_names != st.session_state.file_names:
+        if uploaded_files:
+            combined = ""
+            for f in uploaded_files:
+                f.seek(0)
+                text, ftype = extract_text(f)
+                combined += f"\n\n--- FILE: {f.name} ({ftype}) ---\n{text}\n"
+            st.session_state.file_context = combined
+        else:
+            st.session_state.file_context = ""
+        st.session_state.file_names = current_names
+
     if uploaded_files:
         for f in uploaded_files:
             st.markdown(f"<span class='file-badge'>📎 {f.name}</span>", unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Clear conversation
+    if st.button("🗑 Clear Conversation"):
+        st.session_state.messages = []
+        st.rerun()
+
+    # Download full conversation
+    if st.session_state.messages:
+        download_content = build_download_text(
+            st.session_state.messages, PROVIDER, st.session_state.file_names
+        )
+        filename = f"reasoning_forge_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        st.download_button(
+            label="⬇ Download Conversation",
+            data=download_content,
+            file_name=filename,
+            mime="text/plain"
+        )
 
 # ==============================
 # MAIN INTERFACE
@@ -251,68 +343,60 @@ st.markdown(
 )
 st.markdown(
     "<p style='color:#6b6560; margin-top:0.25rem; margin-bottom:1.5rem;'>"
-    "Powered by AI · Seek reasoning · Upload any files</p>",
+    "Powered by AI · Multi-turn conversation · Upload any files</p>",
     unsafe_allow_html=True
 )
 
+# ── Render conversation history ──────────────────────────────
+for msg in st.session_state.messages:
+    if msg["role"] == "user":
+        st.markdown("<p class='bubble-label label-user'>You</p>", unsafe_allow_html=True)
+        st.markdown(f"<div class='bubble-user'>{html.escape(msg['content'])}</div>", unsafe_allow_html=True)
+    else:
+        # Strip <think> for display
+        content = msg["content"]
+        if "<think>" in content and "</think>" in content:
+            content = content.split("</think>")[-1].strip()
+        st.markdown("<p class='bubble-label label-ai'>✦ Reasoning Forge</p>", unsafe_allow_html=True)
+        st.markdown(f"<div class='bubble-ai'>{format_for_display(content)}</div>", unsafe_allow_html=True)
+
+# Spacing before input
+if st.session_state.messages:
+    st.markdown("<hr class='turn-divider'>", unsafe_allow_html=True)
+
+# ── Input ────────────────────────────────────────────────────
 user_query = st.text_area(
-    "Define your problem:",
-    height=180,
-    placeholder="Ask a question about the uploaded files, or pose any complex problem..."
+    "Your message:" if st.session_state.messages else "Define your problem:",
+    height=130,
+    placeholder="Continue the conversation, or ask a follow-up question...",
+    key="user_input"
 )
 
-if st.button("✦ Start Reasoning"):
-    if not user_query:
-        st.warning("Please enter a question.")
+col1, col2 = st.columns([3, 1])
+with col1:
+    send = st.button("✦ Send" if st.session_state.messages else "✦ Start Reasoning")
+with col2:
+    if st.session_state.messages and st.button("↩ New Chat"):
+        st.session_state.messages = []
+        st.rerun()
+
+# ── Handle send ──────────────────────────────────────────────
+if send:
+    if not user_query.strip():
+        st.warning("Please enter a message.")
     else:
-        # ── Extract file context ─────────────────────────────
-        combined_context = ""
-        if uploaded_files:
-            with st.spinner(f"Extracting data from {len(uploaded_files)} file(s)..."):
-                for f in uploaded_files:
-                    f.seek(0)
-                    text, ftype = extract_text(f)
-                    combined_context += f"\n\n--- FILE: {f.name} ({ftype}) ---\n{text}\n"
+        # Append user message to history
+        st.session_state.messages.append({"role": "user", "content": user_query.strip()})
 
-        final_prompt = (
-            f"CONTEXT:\n{combined_context}\n\nUSER QUESTION:\n{user_query}"
-            if combined_context else user_query
-        )
-
-        # ── Call LLM ─────────────────────────────────────────
         with st.spinner(f"{PROVIDER} is thinking..."):
-            answer = get_llm_response(final_prompt, PROVIDER)
+            reply = get_llm_response(
+                st.session_state.messages,
+                st.session_state.file_context,
+                PROVIDER
+            )
 
-        st.markdown("---")
-        st.markdown("### ✦ Analysis Result")
+        # Append assistant reply to history
+        st.session_state.messages.append({"role": "assistant", "content": reply})
 
-        # Strip <think> block if present (DeepSeek-style models)
-        clean_answer = answer
-        if "<think>" in answer and "</think>" in answer:
-            parts = answer.split("</think>")
-            thought = parts[0].replace("<think>", "").strip()
-            clean_answer = parts[1].strip()
-            with st.expander("View Reasoning Process", expanded=False):
-                st.markdown(f"*{thought}*")
-
-        # Meta line
-        ts = datetime.datetime.now().strftime("%d %b %Y, %H:%M")
-        st.markdown(f"<p class='result-meta'>Generated {ts} · {PROVIDER}</p>", unsafe_allow_html=True)
-
-        # Result box — properly formatted, no blank-space gaps
-        st.markdown(
-            f"<div class='reasoning-box'>{format_for_display(clean_answer)}</div>",
-            unsafe_allow_html=True
-        )
-
-        # ── Download button ──────────────────────────────────
-        st.markdown("<div style='margin-top:1rem;'>", unsafe_allow_html=True)
-        download_content = build_download_text(user_query, clean_answer, PROVIDER, uploaded_files or [])
-        filename = f"reasoning_forge_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        st.download_button(
-            label="⬇ Download Result",
-            data=download_content,
-            file_name=filename,
-            mime="text/plain"
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
+        # Rerun to re-render full chat
+        st.rerun()
