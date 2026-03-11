@@ -1,5 +1,7 @@
 import streamlit as st
 import re
+import requests
+from datetime import datetime, timezone
 from pypdf import PdfReader
 from docx import Document
 from openai import OpenAI
@@ -38,7 +40,6 @@ st.markdown("""
     --mono:       'DM Mono', monospace;
 }
 
-/* ── KILL WHITE HEADER BAR ── */
 header[data-testid="stHeader"] {
     background: var(--bg) !important;
     border-bottom: 1px solid var(--border) !important;
@@ -46,13 +47,8 @@ header[data-testid="stHeader"] {
 [data-testid="stToolbar"]               { display: none !important; }
 [data-testid="collapsedControl"]        { display: none !important; }
 button[kind="header"]                   { display: none !important; }
-[data-testid="stSidebarCollapseButton"] svg { display: none !important; }
-[data-testid="stSidebarCollapseButton"] {
-    background: transparent !important;
-    border: none !important;
-}
+[data-testid="stSidebarCollapseButton"] { display: none !important; }
 
-/* ── GLOBAL BACKGROUND ── */
 html, body,
 [data-testid="stAppViewContainer"],
 [data-testid="stAppViewBlockContainer"],
@@ -62,30 +58,14 @@ html, body,
     font-family: var(--sans) !important;
     font-weight: 300;
 }
-
-/* ── SIDEBAR ── */
 [data-testid="stSidebar"] {
     background: var(--bg2) !important;
     border-right: 1px solid var(--border) !important;
 }
-[data-testid="stSidebar"] * {
-    color: var(--text) !important;
-    font-family: var(--sans) !important;
-}
+[data-testid="stSidebar"] * { color: var(--text) !important; font-family: var(--sans) !important; }
+[data-testid="stMainBlockContainer"] { padding-top: 0.5rem !important; padding-bottom: 4rem !important; }
+h1, h2, h3, h4 { font-family: var(--serif) !important; font-weight: 300 !important; }
 
-/* ── MAIN PADDING ── */
-[data-testid="stMainBlockContainer"] {
-    padding-top: 0.5rem !important;
-    padding-bottom: 4rem !important;
-}
-
-/* ── HEADINGS ── */
-h1, h2, h3, h4 {
-    font-family: var(--serif) !important;
-    font-weight: 300 !important;
-}
-
-/* ── TEXTAREA ── */
 .stTextArea textarea {
     background: var(--bg2) !important;
     border: 1px solid rgba(201,168,76,0.18) !important;
@@ -107,24 +87,15 @@ h1, h2, h3, h4 {
 .stTextArea textarea::-webkit-input-placeholder { color: var(--placeholder) !important; opacity: 1 !important; }
 .stTextArea textarea::-moz-placeholder          { color: var(--placeholder) !important; opacity: 1 !important; }
 .stTextArea textarea:-ms-input-placeholder      { color: var(--placeholder) !important; opacity: 1 !important; }
-
-.stTextArea label,
-[data-testid="stWidgetLabel"] p {
-    font-family: var(--mono) !important;
-    font-size: 0.65rem !important;
-    letter-spacing: 0.18em !important;
-    text-transform: uppercase !important;
-    color: var(--gold) !important;
-    margin-bottom: 0.4rem !important;
-    font-weight: 400 !important;
+.stTextArea label, [data-testid="stWidgetLabel"] p {
+    font-family: var(--mono) !important; font-size: 0.65rem !important;
+    letter-spacing: 0.18em !important; text-transform: uppercase !important;
+    color: var(--gold) !important; margin-bottom: 0.4rem !important; font-weight: 400 !important;
 }
 
-/* ── SELECTBOX ── */
 .stSelectbox > div > div {
-    background: var(--bg2) !important;
-    border: 1px solid rgba(201,168,76,0.18) !important;
-    border-radius: 4px !important;
-    color: var(--text) !important;
+    background: var(--bg2) !important; border: 1px solid rgba(201,168,76,0.18) !important;
+    border-radius: 4px !important; color: var(--text) !important;
 }
 .stSelectbox > div > div:hover,
 .stSelectbox > div > div:focus-within { border-color: var(--gold) !important; }
@@ -133,207 +104,192 @@ div[data-baseweb="popover"] { background: var(--bg2) !important; border: 1px sol
 div[data-baseweb="option"]  { background: var(--bg2) !important; color: var(--text) !important; }
 div[data-baseweb="option"]:hover { background: var(--bg3) !important; color: var(--gold) !important; }
 
-/* ── FILE UPLOADER ── */
 [data-testid="stFileUploader"] {
-    background: var(--bg2) !important;
-    border: 1px dashed rgba(201,168,76,0.25) !important;
-    border-radius: 4px !important;
-    padding: 0.5rem !important;
+    background: var(--bg2) !important; border: 1px dashed rgba(201,168,76,0.25) !important;
+    border-radius: 4px !important; padding: 0.5rem !important;
 }
 [data-testid="stFileUploader"]:hover { border-color: rgba(201,168,76,0.5) !important; }
 [data-testid="stFileUploader"] section { background: transparent !important; border: none !important; }
 [data-testid="stFileUploaderDropzoneInstructions"] > div > span  { color: var(--muted) !important; }
 [data-testid="stFileUploaderDropzoneInstructions"] > div > small { color: var(--placeholder) !important; }
 [data-testid="stFileUploader"] button {
-    background: transparent !important;
-    color: var(--gold) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 3px !important;
-    font-family: var(--mono) !important;
-    font-size: 0.72rem !important;
-    letter-spacing: 0.1em !important;
-    text-transform: uppercase !important;
-    transition: all 0.2s !important;
+    background: transparent !important; color: var(--gold) !important;
+    border: 1px solid var(--border) !important; border-radius: 3px !important;
+    font-family: var(--mono) !important; font-size: 0.72rem !important;
+    letter-spacing: 0.1em !important; text-transform: uppercase !important; transition: all 0.2s !important;
 }
-[data-testid="stFileUploader"] button:hover {
-    border-color: var(--gold) !important;
-    background: var(--gold-dim) !important;
-}
+[data-testid="stFileUploader"] button:hover { border-color: var(--gold) !important; background: var(--gold-dim) !important; }
 [data-testid="stFileUploader"] label {
-    font-family: var(--mono) !important;
-    font-size: 0.65rem !important;
-    letter-spacing: 0.18em !important;
-    text-transform: uppercase !important;
-    color: var(--gold) !important;
+    font-family: var(--mono) !important; font-size: 0.65rem !important;
+    letter-spacing: 0.18em !important; text-transform: uppercase !important; color: var(--gold) !important;
 }
 
-/* ── MAIN BUTTON ── */
 .stButton > button {
-    background: var(--gold) !important;
-    color: #0b0c0f !important;
-    border: 1px solid var(--gold) !important;
-    border-radius: 3px !important;
-    font-family: var(--sans) !important;
-    font-size: 0.8rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.12em !important;
-    text-transform: uppercase !important;
-    padding: 0.7rem 2.2rem !important;
-    transition: all 0.2s ease !important;
+    background: var(--gold) !important; color: #0b0c0f !important;
+    border: 1px solid var(--gold) !important; border-radius: 3px !important;
+    font-family: var(--sans) !important; font-size: 0.8rem !important;
+    font-weight: 600 !important; letter-spacing: 0.12em !important;
+    text-transform: uppercase !important; padding: 0.7rem 2.2rem !important; transition: all 0.2s ease !important;
 }
 .stButton > button:hover {
-    background: transparent !important;
-    color: var(--gold) !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 8px 30px rgba(201,168,76,0.2) !important;
+    background: transparent !important; color: var(--gold) !important;
+    transform: translateY(-1px) !important; box-shadow: 0 8px 30px rgba(201,168,76,0.2) !important;
 }
-
-/* ── DOWNLOAD BUTTON ── */
 .stDownloadButton > button {
-    background: transparent !important;
-    color: var(--gold) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 3px !important;
-    font-size: 0.78rem !important;
-    letter-spacing: 0.1em !important;
-    text-transform: uppercase !important;
-    transition: all 0.2s !important;
+    background: transparent !important; color: var(--gold) !important;
+    border: 1px solid var(--border) !important; border-radius: 3px !important;
+    font-size: 0.78rem !important; letter-spacing: 0.1em !important;
+    text-transform: uppercase !important; transition: all 0.2s !important;
 }
-.stDownloadButton > button:hover {
-    border-color: var(--gold) !important;
-    background: var(--gold-dim) !important;
-}
+.stDownloadButton > button:hover { border-color: var(--gold) !important; background: var(--gold-dim) !important; }
 
-/* ── DIVIDER ── */
-hr {
-    border: none !important;
-    border-top: 1px solid var(--border) !important;
-    margin: 2rem 0 !important;
-}
+hr { border: none !important; border-top: 1px solid var(--border) !important; margin: 2rem 0 !important; }
 
-/* ── METRIC ── */
 [data-testid="stMetric"] {
-    background: var(--bg2) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 4px !important;
-    padding: 1.2rem 1.5rem !important;
+    background: var(--bg2) !important; border: 1px solid var(--border) !important;
+    border-radius: 4px !important; padding: 1.2rem 1.5rem !important;
 }
 [data-testid="stMetricLabel"] p {
-    font-family: var(--mono) !important;
-    font-size: 0.62rem !important;
-    letter-spacing: 0.16em !important;
-    text-transform: uppercase !important;
-    color: var(--muted) !important;
+    font-family: var(--mono) !important; font-size: 0.62rem !important;
+    letter-spacing: 0.16em !important; text-transform: uppercase !important; color: var(--muted) !important;
 }
 [data-testid="stMetricValue"] {
-    font-family: var(--serif) !important;
-    font-size: 2.8rem !important;
-    font-weight: 300 !important;
-    color: var(--gold) !important;
-    line-height: 1.1 !important;
+    font-family: var(--serif) !important; font-size: 2.8rem !important;
+    font-weight: 300 !important; color: var(--gold) !important; line-height: 1.1 !important;
 }
 [data-testid="stMetricDelta"] { color: #28A745 !important; font-size: 0.78rem !important; }
-
-/* ── SPINNER ── */
 .stSpinner > div { border-top-color: var(--gold) !important; }
+.stAlert { background: var(--bg2) !important; border: 1px solid var(--border) !important; border-radius: 3px !important; color: var(--text) !important; }
 
-/* ── ALERTS ── */
-.stAlert {
-    background: var(--bg2) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 3px !important;
-    color: var(--text) !important;
-}
-
-/* ── MARKDOWN OUTPUT ── */
-.stMarkdown p, .stMarkdown li {
-    color: var(--text) !important;
-    line-height: 1.85 !important;
-    font-size: 0.95rem !important;
-}
-.stMarkdown h3 {
-    font-family: var(--serif) !important;
-    color: var(--gold) !important;
-    font-size: 1.4rem !important;
-    margin-top: 1.5rem !important;
-    font-weight: 300 !important;
-}
+.stMarkdown p, .stMarkdown li { color: var(--text) !important; line-height: 1.85 !important; font-size: 0.95rem !important; }
+.stMarkdown h3 { font-family: var(--serif) !important; color: var(--gold) !important; font-size: 1.4rem !important; margin-top: 1.5rem !important; font-weight: 300 !important; }
 .stMarkdown strong { color: var(--gold-light) !important; font-weight: 500 !important; }
-.stMarkdown code {
-    background: var(--bg3) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 3px !important;
-    color: var(--gold) !important;
-    font-family: var(--mono) !important;
-    font-size: 0.82rem !important;
-    padding: 0.15rem 0.45rem !important;
-}
+.stMarkdown code { background: var(--bg3) !important; border: 1px solid var(--border) !important; border-radius: 3px !important; color: var(--gold) !important; font-family: var(--mono) !important; font-size: 0.82rem !important; padding: 0.15rem 0.45rem !important; }
 
-/* ── COVER LETTER PANEL ── */
 .cover-letter-box {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 2rem 2.2rem;
-    line-height: 1.9;
-    font-size: 0.95rem;
-    color: var(--text);
-    white-space: pre-wrap;
-    font-family: var(--sans);
-    position: relative;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 2rem 2.2rem; line-height: 1.9; font-size: 0.95rem; color: var(--text);
+    white-space: pre-wrap; font-family: var(--sans); position: relative;
 }
 .cover-letter-box::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--gold), transparent);
-    border-radius: 6px 6px 0 0;
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--gold), transparent); border-radius: 6px 6px 0 0;
 }
 
-/* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gold); }
 </style>
+
+<script>
+const removeTitles = () => {
+    document.querySelectorAll('[data-testid="stSidebarCollapseButton"]').forEach(btn => {
+        btn.removeAttribute('title');
+        btn.removeAttribute('aria-label');
+        btn.style.display = 'none';
+    });
+    document.querySelectorAll('button[kind="header"]').forEach(btn => {
+        btn.removeAttribute('title');
+        btn.style.display = 'none';
+    });
+};
+removeTitles();
+new MutationObserver(removeTitles).observe(document.body, { childList: true, subtree: true });
+</script>
 """, unsafe_allow_html=True)
 
 
-# ==============================
-# HERO HEADER
-# ==============================
-st.markdown("""
-<div style="padding: 2.5rem 0 1.8rem; position: relative; overflow: hidden;">
-    <div style="
-        position: absolute; inset: 0;
-        background-image:
-            linear-gradient(rgba(201,168,76,0.035) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(201,168,76,0.035) 1px, transparent 1px);
-        background-size: 52px 52px; pointer-events: none;
-    "></div>
-    <div style="position:relative; z-index:1;">
-        <div style="font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:0.24em;
-                    text-transform:uppercase; color:#c9a84c; margin-bottom:0.9rem;
-                    display:flex; align-items:center; gap:0.7rem;">
-            <span style="display:inline-block; width:26px; height:1px; background:#c9a84c;"></span>
-            AI-Powered · Job-Specific · Interview-Ready
-        </div>
-        <h1 style="font-family:'Cormorant Garamond',Georgia,serif;
-                   font-size:clamp(2.6rem,5.5vw,4.6rem); font-weight:300;
-                   line-height:1.05; color:#f0ede6; margin-bottom:0.7rem; letter-spacing:-0.01em;">
-            Resume<em style="color:#c9a84c; font-style:italic;">Forge</em>
-        </h1>
-        <p style="font-family:'DM Sans',sans-serif; font-size:0.98rem; color:#9a958f;
-                  font-weight:300; max-width:500px; line-height:1.75; margin:0;">
-            Paste a job description, upload your resume — and let AI sculpt
-            a response precisely tuned to land you the interview.
-        </p>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+# ══════════════════════════════════════════════════════
+# ANALYTICS — Supabase helpers
+# ══════════════════════════════════════════════════════
+# Supabase credentials live in .streamlit/secrets.toml:
+#
+#   [supabase]
+#   url = "https://xxxxxxxxxxxx.supabase.co"
+#   key = "your-anon-public-key"
+#
+# SQL to run once in Supabase SQL Editor:
+#
+#   CREATE TABLE analytics (
+#       id         BIGSERIAL PRIMARY KEY,
+#       event      TEXT NOT NULL,
+#       created_at TIMESTAMPTZ DEFAULT NOW()
+#   );
+#   -- Allow anonymous inserts + selects
+#   ALTER TABLE analytics ENABLE ROW LEVEL SECURITY;
+#   CREATE POLICY "allow_insert" ON analytics FOR INSERT WITH CHECK (true);
+#   CREATE POLICY "allow_select" ON analytics FOR SELECT USING (true);
 
-st.markdown("<hr/>", unsafe_allow_html=True)
+SUPABASE_URL = st.secrets.get("supabase", {}).get("url", "")
+SUPABASE_KEY = st.secrets.get("supabase", {}).get("key", "")
+ANALYTICS_ON = bool(SUPABASE_URL and SUPABASE_KEY)
+
+# Event keys — keep short and consistent
+EV_VISIT = "visit"
+EV_RUN   = "run"                     # any analysis run
+EV_ATS   = "goal_ats"
+EV_STAR  = "goal_star"
+EV_SUMM  = "goal_summary"
+EV_GAP   = "goal_gap"
+EV_COVER = "cover_letter_generated"
+
+GOAL_EVENTS = {
+    "✦  ATS Keyword Optimization":          EV_ATS,
+    "✦  Rewrite Bullets with Impact":       EV_STAR,
+    "✦  Professional Summary Rewrite":      EV_SUMM,
+    "✦  Skills Gap Analysis":               EV_GAP,
+}
+
+
+def _sb_headers():
+    return {
+        "apikey":        SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type":  "application/json",
+        "Prefer":        "return=minimal",
+    }
+
+
+def track(event: str):
+    """Fire-and-forget event insert into Supabase."""
+    if not ANALYTICS_ON:
+        return
+    try:
+        requests.post(
+            f"{SUPABASE_URL}/rest/v1/analytics",
+            json={"event": event},
+            headers=_sb_headers(),
+            timeout=3
+        )
+    except Exception:
+        pass   # never let analytics break the app
+
+
+def get_counts() -> dict:
+    """Return a dict of {event: count} for display."""
+    if not ANALYTICS_ON:
+        return {}
+    try:
+        resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/analytics?select=event",
+            headers={**_sb_headers(), "Prefer": ""},
+            timeout=4
+        )
+        rows = resp.json()
+        counts = {}
+        for row in rows:
+            e = row.get("event", "")
+            counts[e] = counts.get(e, 0) + 1
+        return counts
+    except Exception:
+        return {}
+
+
+# ── Track unique page visit per browser session ──────────────────────────────
+if "visited" not in st.session_state:
+    st.session_state.visited = True
+    track(EV_VISIT)
 
 
 # ==============================
@@ -358,35 +314,7 @@ with st.sidebar:
             "Closed-source (Gemini) via Google"
         ]
     )
-    st.markdown("""
-    <style>
-    /* Hide the sidebar toggle button entirely */
-    [data-testid="stSidebarCollapseButton"] {
-        display: none !important;
-    }
-    </style>
-    
-    <script>
-    // Strip the tooltip title attribute that causes "keyboard_doc" to appear
-    const removeTitles = () => {
-        document.querySelectorAll('[data-testid="stSidebarCollapseButton"]').forEach(btn => {
-            btn.removeAttribute('title');
-            btn.removeAttribute('aria-label');
-            btn.style.display = 'none';
-        });
-        // Also catch the parent wrapper
-        document.querySelectorAll('button[kind="header"]').forEach(btn => {
-            btn.removeAttribute('title');
-            btn.style.display = 'none';
-        });
-    };
-    
-    // Run immediately and after Streamlit re-renders
-    removeTitles();
-    const observer = new MutationObserver(removeTitles);
-    observer.observe(document.body, { childList: true, subtree: true });
-    </script>
-    """, unsafe_allow_html=True)
+
     st.markdown("""
     <div style="margin-top:1.8rem; padding:1.2rem; background:#0b0c0f;
                 border:1px solid rgba(201,168,76,0.18); border-radius:4px;">
@@ -409,6 +337,116 @@ with st.sidebar:
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # ── ANALYTICS DASHBOARD — fully inline styles (no CSS class dependency)
+    if ANALYTICS_ON:
+        counts       = get_counts()
+        total_visits = counts.get(EV_VISIT, 0)
+        total_runs   = counts.get(EV_RUN,   0)
+        ats_count    = counts.get(EV_ATS,   0)
+        star_count   = counts.get(EV_STAR,  0)
+        summ_count   = counts.get(EV_SUMM,  0)
+        gap_count    = counts.get(EV_GAP,   0)
+        cover_count  = counts.get(EV_COVER, 0)
+        total_goals  = ats_count + star_count + summ_count + gap_count or 1
+
+        def pct(n): return round(n / total_goals * 100)
+
+        # — Panel header
+        st.markdown(
+            "<div style='margin-top:1.6rem; border-radius:6px 6px 0 0; overflow:hidden;"
+            "border:1px solid rgba(201,168,76,0.25); border-bottom:none;"
+            "background:linear-gradient(135deg,#1a160a 0%,#0f1118 100%);"
+            "padding:0.8rem 1.1rem; display:flex; align-items:center; gap:0.55rem;'>"
+            "<div style='width:7px; height:7px; border-radius:50%; background:#c9a84c;"
+            "box-shadow:0 0 8px rgba(201,168,76,0.9);'></div>"
+            "<span style='font-family:DM Mono,monospace; font-size:0.62rem;"
+            "letter-spacing:0.2em; text-transform:uppercase; color:#c9a84c;"
+            "font-weight:500;'>Live Analytics</span></div>",
+            unsafe_allow_html=True
+        )
+
+        # — Stat cards
+        st.markdown(
+            "<div style='border-left:1px solid rgba(201,168,76,0.25);"
+            "border-right:1px solid rgba(201,168,76,0.25);"
+            "background:#0d0e12; padding:0.9rem 1rem 0.6rem;'>"
+            "<div style='display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.45rem;'>"
+
+            f"<div style='background:rgba(99,179,237,0.08); border:1px solid rgba(99,179,237,0.25);"
+            f"border-radius:5px; padding:0.6rem 0.3rem; text-align:center;'>"
+            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500;"
+            f"color:#63b3ed; line-height:1.1;'>{total_visits:,}</div>"
+            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase;"
+            f"color:#6a6560; margin-top:0.15rem;'>Visitors</div></div>"
+
+            f"<div style='background:rgba(104,211,145,0.07); border:1px solid rgba(104,211,145,0.22);"
+            f"border-radius:5px; padding:0.6rem 0.3rem; text-align:center;'>"
+            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500;"
+            f"color:#68d391; line-height:1.1;'>{total_runs:,}</div>"
+            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase;"
+            f"color:#6a6560; margin-top:0.15rem;'>Analyses</div></div>"
+
+            f"<div style='background:rgba(201,168,76,0.08); border:1px solid rgba(201,168,76,0.22);"
+            f"border-radius:5px; padding:0.6rem 0.3rem; text-align:center;'>"
+            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500;"
+            f"color:#c9a84c; line-height:1.1;'>{cover_count:,}</div>"
+            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase;"
+            f"color:#6a6560; margin-top:0.15rem;'> Cover Letters</div></div>"
+
+            "</div></div>",
+            unsafe_allow_html=True
+        )
+
+        # — Goal breakdown section title
+        st.markdown(
+            "<div style='border-left:1px solid rgba(201,168,76,0.25);"
+            "border-right:1px solid rgba(201,168,76,0.25);"
+            "background:#0d0e12; padding:0.6rem 1rem 0.5rem;'>"
+            "<div style='font-family:DM Mono,monospace; font-size:0.57rem; letter-spacing:0.16em;"
+            "text-transform:uppercase; color:#4a4845;"
+            "border-top:1px solid rgba(255,255,255,0.05); padding-top:0.6rem;'>"
+            "Goal Breakdown</div></div>",
+            unsafe_allow_html=True
+        )
+
+        # — Goal rows (each rendered individually — no nesting issues)
+        goal_items = [
+            ("ATS Keywords",         ats_count,  "#c9a84c", "rgba(201,168,76,0.2)"),
+            ("Impact Bullet Rewrite", star_count, "#63b3ed", "rgba(99,179,237,0.2)"),
+            ("Summary Rewrite",      summ_count, "#68d391", "rgba(104,211,145,0.2)"),
+            ("Skills Gap",           gap_count,  "#fc8181", "rgba(252,129,129,0.2)"),
+        ]
+        for i, (name, count, color, grad) in enumerate(goal_items):
+            w   = pct(count)
+            is_last = (i == len(goal_items) - 1)
+            bottom_radius = "0 0 6px 6px" if is_last else "0"
+            bottom_border = "border-bottom:1px solid rgba(201,168,76,0.25);" if is_last else ""
+            st.markdown(
+                f"<div style='border-left:1px solid rgba(201,168,76,0.25);"
+                f"border-right:1px solid rgba(201,168,76,0.25); {bottom_border}"
+                f"border-radius:{bottom_radius}; background:#0d0e12;"
+                f"padding:0.3rem 1rem 0.55rem;'>"
+                f"<div style='display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.28rem;'>"
+                f"<span style='font-size:0.73rem; color:#b0aa9f;'>{name}</span>"
+                f"<span style='font-family:DM Mono,monospace; font-size:0.7rem; font-weight:500; color:{color};'>"
+                f"{count} <span style='color:#4a4845; font-size:0.58rem;'>· {w}%</span></span></div>"
+                f"<div style='height:5px; border-radius:3px; background:rgba(255,255,255,0.05); overflow:hidden;'>"
+                f"<div style='height:5px; width:{w}%; border-radius:3px;"
+                f"background:linear-gradient(90deg,{color},{grad});'></div></div></div>",
+                unsafe_allow_html=True
+            )
+    else:
+        st.markdown("""
+        <div style="margin-top:1.4rem; padding:0.9rem 1rem; background:#0b0c0f;
+                    border:1px dashed rgba(201,168,76,0.15); border-radius:4px;">
+            <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.14em;
+                        text-transform:uppercase; color:#4a4845; margin-bottom:0.3rem;">Analytics</div>
+            <div style="font-size:0.75rem; color:#4a4845; line-height:1.6;">
+                Add Supabase credentials to secrets.toml to enable live analytics.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ==============================
@@ -447,17 +485,14 @@ def extract_text(file):
 
 
 def call_llm(system_task, user_content, add_score=True):
-    """Call the configured LLM. Set add_score=False for cover letter generation."""
     scoring_instruction = (
         "\n\nCRITICAL: Begin your response with 'MATCH_SCORE: [number]' (0–100) "
         "based on how well the resume fits the job description, followed by your analysis."
     ) if add_score else ""
-
     try:
         if "Gemini" not in PROVIDER:
             r = client.chat.completions.create(
-                model=MODEL_NAME,
-                temperature=0.4,
+                model=MODEL_NAME, temperature=0.4,
                 messages=[
                     {"role": "system", "content": system_task + scoring_instruction},
                     {"role": "user",   "content": user_content}
@@ -465,9 +500,7 @@ def call_llm(system_task, user_content, add_score=True):
             )
             return r.choices[0].message.content.strip()
         else:
-            r = gemini_model.generate_content(
-                f"{system_task}{scoring_instruction}\n\n{user_content}"
-            )
+            r = gemini_model.generate_content(f"{system_task}{scoring_instruction}\n\n{user_content}")
             return r.text.strip()
     except Exception as e:
         st.error(f"LLM Error: {e}")
@@ -475,7 +508,6 @@ def call_llm(system_task, user_content, add_score=True):
 
 
 def generate_cover_letter(job_desc, resume_text):
-    """Dedicated cover letter prompt — no score prefix needed."""
     system_task = """You are an expert career coach and professional writer.
 Write a compelling, personalized cover letter based on the candidate's resume and the job description provided.
 
@@ -488,16 +520,47 @@ The cover letter must:
 - NOT use generic filler phrases like "I am writing to express my interest..." or "I am a hard worker"
 - Sound like a real human wrote it, not a template
 
-Output ONLY the cover letter text — no subject lines, no labels, no preamble. Start directly with "Dear Hiring Manager," or a named salutation if the name is available."""
-
+Output ONLY the cover letter text. Start directly with "Dear Hiring Manager," or a named salutation if available."""
     return call_llm(system_task, f"JOB DESCRIPTION:\n{job_desc}\n\nRESUME:\n{resume_text}", add_score=False)
 
 
 def get_score_color(score):
-    if score < 50:  return "#FF4B4B"
+    if score < 50:   return "#FF4B4B"
     elif score < 80: return "#FFA500"
     else:            return "#28A745"
 
+
+# ==============================
+# HERO HEADER
+# ==============================
+st.markdown("""
+<div style="padding:2.5rem 0 1.8rem; position:relative; overflow:hidden;">
+    <div style="position:absolute; inset:0;
+        background-image: linear-gradient(rgba(201,168,76,0.035) 1px,transparent 1px),
+                          linear-gradient(90deg,rgba(201,168,76,0.035) 1px,transparent 1px);
+        background-size:52px 52px; pointer-events:none;"></div>
+    <div style="position:relative; z-index:1;">
+        <div style="font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:0.24em;
+                    text-transform:uppercase; color:#c9a84c; margin-bottom:0.9rem;
+                    display:flex; align-items:center; gap:0.7rem;">
+            <span style="display:inline-block; width:26px; height:1px; background:#c9a84c;"></span>
+            AI-Powered · Job-Specific · Interview-Ready
+        </div>
+        <h1 style="font-family:'Cormorant Garamond',Georgia,serif;
+                   font-size:clamp(2.6rem,5.5vw,4.6rem); font-weight:300;
+                   line-height:1.05; color:#f0ede6; margin-bottom:0.7rem; letter-spacing:-0.01em;">
+            Resume<em style="color:#c9a84c; font-style:italic;">Forge</em>
+        </h1>
+        <p style="font-family:'DM Sans',sans-serif; font-size:0.98rem; color:#9a958f;
+                  font-weight:300; max-width:500px; line-height:1.75; margin:0;">
+            Paste a job description, upload your resume — and let AI sculpt
+            a response precisely tuned to land you the interview.
+        </p>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown("<hr/>", unsafe_allow_html=True)
 
 # ==============================
 # STEP INDICATOR
@@ -514,21 +577,18 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-
 # ==============================
 # INPUTS
 # ==============================
 col1, col2 = st.columns(2, gap="large")
 with col1:
     resume_file = st.file_uploader(
-        "Upload Resume",
-        type=["pdf", "docx", "txt"],
+        "Upload Resume", type=["pdf", "docx", "txt"],
         help="Your file is processed in memory and never stored."
     )
 with col2:
     job_desc = st.text_area(
-        "Target Job Description",
-        height=200,
+        "Target Job Description", height=200,
         placeholder="Paste the full job posting here — requirements, responsibilities, everything..."
     )
 
@@ -538,10 +598,10 @@ st.markdown("<hr/>", unsafe_allow_html=True)
 # GOAL + INSTRUCTIONS
 # ==============================
 prompt_options = {
-    "✦  ATS Keyword Optimization":     "Analyze the Job Description for top keywords and modify my resume bullet points to include them naturally.",
-    #"✦  STAR Method Bullet Rewrite":   "Rewrite my work experience bullet points using the STAR method (Situation, Task, Action, Result). Focus on quantifiable achievements.",
-    "✦  Professional Summary Rewrite": "Draft a compelling 3–4 sentence professional summary that bridges my current experience with this specific job.",
-    "✦  Skills Gap Analysis":          "Compare my resume against the job description. Identify exactly what hard and soft skills I am currently missing.",
+    "✦  ATS Keyword Optimization":          "Analyze the Job Description for top keywords and modify my resume bullet points to include them naturally.",
+    "✦  Rewrite Bullets with Impact":       "Rewrite my work experience bullet points to highlight measurable achievements and strong action verbs. Turn vague responsibilities into powerful results-driven statements — e.g. 'Managed a team' becomes 'Led a 6-person team that delivered a 30% efficiency gain in Q3'. Focus on outcomes, numbers, and impact.",
+    "✦  Professional Summary Rewrite":      "Draft a compelling 3–4 sentence professional summary that bridges my current experience with this specific job.",
+    "✦  Skills Gap Analysis":               "Compare my resume against the job description. Identify exactly what hard and soft skills I am currently missing.",
 }
 
 col3, col4 = st.columns([1.2, 1], gap="large")
@@ -549,14 +609,12 @@ with col3:
     selected_strategy = st.selectbox("Choose Your Goal", list(prompt_options.keys()))
 with col4:
     custom_instructions = st.text_area(
-        "Additional Instructions (Optional)",
-        height=110,
+        "Additional Instructions (Optional)", height=110,
         placeholder="e.g. 'Highlight my 10 years of experience in logistics'"
     )
 
 st.markdown("<br/>", unsafe_allow_html=True)
 
-# ── ATS badge hint
 is_ats = "ATS" in selected_strategy
 if is_ats:
     st.markdown("""
@@ -577,7 +635,6 @@ with col_btn:
 
 st.markdown("<hr/>", unsafe_allow_html=True)
 
-
 # ==============================
 # RESULTS
 # ==============================
@@ -592,18 +649,21 @@ if run:
         if custom_instructions:
             system_task += f"  Additional user context: {custom_instructions}"
 
+        # ── Track this run
+        track(EV_RUN)
+        track(GOAL_EVENTS.get(selected_strategy, "goal_other"))
+
         # ── Run main analysis
         with st.spinner("Analyzing your resume against the role..."):
-            result = call_llm(
-                system_task,
-                f"JOB DESCRIPTION:\n{job_desc}\n\nRESUME:\n{resume_text}"
-            )
+            result = call_llm(system_task, f"JOB DESCRIPTION:\n{job_desc}\n\nRESUME:\n{resume_text}")
 
-        # ── Run cover letter if ATS selected
+        # ── Cover letter (ATS only)
         cover_letter_text = ""
         if is_ats and result:
             with st.spinner("Generating your tailored cover letter..."):
                 cover_letter_text = generate_cover_letter(job_desc, resume_text)
+            if cover_letter_text:
+                track(EV_COVER)
 
         if result:
             score_match = re.search(r"MATCH_SCORE:\s*(\d+)", result)
@@ -618,35 +678,30 @@ if run:
                     else "Needs Work"
                 )
 
-                # Success banner
                 st.markdown(f"""
                 <div style="padding:0.85rem 1.3rem; background:rgba(40,167,69,0.07);
                             border:1px solid rgba(40,167,69,0.28); border-radius:3px;
                             margin-bottom:1.4rem; font-family:'DM Mono',monospace;
-                            font-size:0.68rem; letter-spacing:0.14em; text-transform:uppercase;
-                            color:#28A745;">
+                            font-size:0.68rem; letter-spacing:0.14em; text-transform:uppercase; color:#28A745;">
                     ✓ &nbsp; Analysis complete · {PROVIDER.split('(')[0].strip()}
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Score row
                 m1, m2 = st.columns([1, 3], gap="large")
                 with m1:
                     st.metric("Match Score", f"{score_val}%", delta=score_label)
                 with m2:
                     st.markdown(f"""
                     <div style="margin-top:1.1rem;">
-                        <div style="font-family:'DM Mono',monospace; font-size:0.6rem;
-                                    letter-spacing:0.16em; text-transform:uppercase;
-                                    color:#9a958f; margin-bottom:0.55rem;">
+                        <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.16em;
+                                    text-transform:uppercase; color:#9a958f; margin-bottom:0.55rem;">
                             Resume – Job Alignment
                         </div>
                         <div style="height:7px; background:#1c1f28; border-radius:3px; overflow:hidden;">
                             <div style="height:100%; width:{score_val}%; background:{color}; border-radius:3px;"></div>
                         </div>
-                        <div style="display:flex; justify-content:space-between;
-                                    font-size:0.6rem; color:#4a4845;
-                                    font-family:'DM Mono',monospace; margin-top:0.35rem;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.6rem;
+                                    color:#4a4845; font-family:'DM Mono',monospace; margin-top:0.35rem;">
                             <span>0%</span><span>50%</span><span>100%</span>
                         </div>
                     </div>
@@ -656,14 +711,12 @@ if run:
 
             st.markdown("<hr/>", unsafe_allow_html=True)
 
-            # ── Analysis results header
             st.markdown(f"""
             <div style="margin-bottom:1.1rem;">
-                <div style="font-family:'DM Mono',monospace; font-size:0.62rem;
-                            letter-spacing:0.2em; text-transform:uppercase; color:#c9a84c;
-                            margin-bottom:0.35rem; display:flex; align-items:center; gap:0.6rem;">
-                    <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>
-                    Results
+                <div style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em;
+                            text-transform:uppercase; color:#c9a84c; margin-bottom:0.35rem;
+                            display:flex; align-items:center; gap:0.6rem;">
+                    <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>Results
                 </div>
                 <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
                             font-weight:300; color:#f0ede6;">
@@ -675,85 +728,60 @@ if run:
             st.markdown(display_text)
             st.markdown("<br/>", unsafe_allow_html=True)
 
-            # ── Download analysis
             dcol1, _ = st.columns([1, 4])
             with dcol1:
                 st.download_button(
-                    "↓  Download Analysis",
-                    data=display_text,
-                    file_name="resume_analysis.doc",
-                    mime="text/plain"
+                    "↓  Download Analysis", data=display_text,
+                    file_name="resume_analysis.txt", mime="text/plain"
                 )
 
-            # ══════════════════════════════════════════
-            # COVER LETTER SECTION (ATS only)
-            # ══════════════════════════════════════════
+            # ── Cover Letter Section ──────────────────────────────────────
             if is_ats and cover_letter_text:
                 st.markdown("<hr/>", unsafe_allow_html=True)
 
-                # Section header
                 st.markdown("""
                 <div style="margin-bottom:1.4rem;">
-                    <div style="font-family:'DM Mono',monospace; font-size:0.62rem;
-                                letter-spacing:0.2em; text-transform:uppercase; color:#c9a84c;
-                                margin-bottom:0.35rem; display:flex; align-items:center; gap:0.6rem;">
-                        <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>
-                        Bonus
+                    <div style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em;
+                                text-transform:uppercase; color:#c9a84c; margin-bottom:0.35rem;
+                                display:flex; align-items:center; gap:0.6rem;">
+                        <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>Bonus
                     </div>
                     <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
                                 font-weight:300; color:#f0ede6; margin-bottom:0.4rem;">
                         Your Tailored Cover Letter
                     </div>
-                    <p style="font-family:'DM Sans',sans-serif; font-size:0.85rem;
-                              color:#9a958f; font-weight:300; max-width:560px; line-height:1.7; margin:0;">
+                    <p style="font-family:'DM Sans',sans-serif; font-size:0.85rem; color:#9a958f;
+                              font-weight:300; max-width:560px; line-height:1.7; margin:0;">
                         Written specifically for this role using your resume and the job description.
-                        Edit freely before sending — this is your starting point, not your final draft.
+                        Edit freely before sending.
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Cover letter display box
-                st.markdown(f"""
-                <div class="cover-letter-box">{cover_letter_text}</div>
-                """, unsafe_allow_html=True)
-
+                st.markdown(f'<div class="cover-letter-box">{cover_letter_text}</div>', unsafe_allow_html=True)
                 st.markdown("<br/>", unsafe_allow_html=True)
 
-                # Download buttons — side by side
-                cl_col1, cl_col2, _ = st.columns([1, 1, 3])
-                with cl_col1:
+                cl1, cl2, _ = st.columns([1, 1, 3])
+                with cl1:
                     st.download_button(
-                        "↓  Download Cover Letter (.txt)",
-                        data=cover_letter_text,
-                        file_name="cover_letter.txt",
-                        mime="text/plain",
-                        key="dl_cover_txt"
+                        "↓  Download .txt", data=cover_letter_text,
+                        file_name="cover_letter.txt", mime="text/plain", key="dl_cover_txt"
                     )
-                with cl_col2:
-                    # Also offer as .docx-friendly plain text with proper line breaks
-                    formatted = cover_letter_text.replace("\n", "\r\n")
+                with cl2:
                     st.download_button(
-                        "↓  Download as .doc",
-                        data=formatted,
-                        file_name="cover_letter.doc",
-                        mime="application/msword",
-                        key="dl_cover_doc"
+                        "↓  Download .doc", data=cover_letter_text.replace("\n", "\r\n"),
+                        file_name="cover_letter.doc", mime="application/msword", key="dl_cover_doc"
                     )
 
-                # Tip callout
                 st.markdown("""
-                <div style="margin-top:1rem; padding:0.9rem 1.2rem;
-                            background:rgba(201,168,76,0.05);
-                            border-left:2px solid rgba(201,168,76,0.4);
-                            border-radius:0 4px 4px 0;">
+                <div style="margin-top:1rem; padding:0.9rem 1.2rem; background:rgba(201,168,76,0.05);
+                            border-left:2px solid rgba(201,168,76,0.4); border-radius:0 4px 4px 0;">
                     <span style="font-family:'DM Mono',monospace; font-size:0.62rem;
-                                 letter-spacing:0.14em; text-transform:uppercase; color:#c9a84c;">
-                        ✦ Tip
-                    </span>
-                    <p style="font-family:'DM Sans',sans-serif; font-size:0.82rem;
-                              color:#9a958f; margin:0.3rem 0 0; line-height:1.7;">
+                                 letter-spacing:0.14em; text-transform:uppercase; color:#c9a84c;">✦ Tip</span>
+                    <p style="font-family:'DM Sans',sans-serif; font-size:0.82rem; color:#9a958f;
+                              margin:0.3rem 0 0; line-height:1.7;">
                         Personalise the opening line with the hiring manager's name if you can find it on LinkedIn.
-                        A named salutation increases open rates by up to 20%.
+                        A named salutation can increase response rates by up to 20%.
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
