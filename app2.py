@@ -130,9 +130,9 @@ def extract_text(file) -> tuple[str, str]:
 
 def get_llm_response(prompt, provider):
     try:
-        if "DeepSeek" in provider:
+        if "Metal-llama" in provider:
             client = OpenAI(api_key=st.secrets["OPENROUTER_API_KEY"], base_url="https://openrouter.ai/api/v1")
-            response = client.chat.completions.create(model="deepseek/deepseek-r1", messages=[{"role": "user", "content": prompt}])
+            response = client.chat.completions.create(model="meta-llama/llama-3.1-8b-instruct", messages=[{"role": "user", "content": prompt}])
             return response.choices[0].message.content
         elif "OpenAI" in provider:
             client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
