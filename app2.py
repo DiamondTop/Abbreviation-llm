@@ -352,91 +352,90 @@ with st.sidebar:
 
         def pct(n): return round(n / total_goals * 100)
 
-        def goal_row(name, count, color, grad):
-            w = pct(count)
-            return f"""
-            <div style="margin-bottom:0.7rem;">
-                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.28rem;">
-                    <span style="font-size:0.74rem; color:#b0aa9f;">{name}</span>
-                    <span style="font-family:'DM Mono',monospace; font-size:0.72rem; font-weight:500; color:{color};">
-                        {count} <span style="color:#4a4845; font-size:0.6rem;">· {w}%</span>
-                    </span>
-                </div>
-                <div style="height:5px; border-radius:3px; background:rgba(255,255,255,0.05); overflow:hidden;">
-                    <div style="height:5px; width:{w}%; border-radius:3px;
-                                background:linear-gradient(90deg,{color},{grad});"></div>
-                </div>
-            </div>"""
-
-        goals_html = (
-            goal_row("ATS Keywords",          ats_count,  "#c9a84c", "rgba(201,168,76,0.2)") +
-            goal_row("Impact Bullet Rewrite",  star_count, "#63b3ed", "rgba(99,179,237,0.2)") +
-            goal_row("Summary Rewrite",        summ_count, "#68d391", "rgba(104,211,145,0.2)") +
-            goal_row("Skills Gap",             gap_count,  "#fc8181", "rgba(252,129,129,0.2)")
+        # — Panel header
+        st.markdown(
+            "<div style='margin-top:1.6rem; border-radius:6px 6px 0 0; overflow:hidden;"
+            "border:1px solid rgba(201,168,76,0.25); border-bottom:none;"
+            "background:linear-gradient(135deg,#1a160a 0%,#0f1118 100%);"
+            "padding:0.8rem 1.1rem; display:flex; align-items:center; gap:0.55rem;'>"
+            "<div style='width:7px; height:7px; border-radius:50%; background:#c9a84c;"
+            "box-shadow:0 0 8px rgba(201,168,76,0.9);'></div>"
+            "<span style='font-family:DM Mono,monospace; font-size:0.62rem;"
+            "letter-spacing:0.2em; text-transform:uppercase; color:#c9a84c;"
+            "font-weight:500;'>Live Analytics</span></div>",
+            unsafe_allow_html=True
         )
 
-        st.markdown(f"""
-        <div style="margin-top:1.6rem; border-radius:6px; overflow:hidden;
-                    border:1px solid rgba(201,168,76,0.25);">
+        # — Stat cards
+        st.markdown(
+            "<div style='border-left:1px solid rgba(201,168,76,0.25);"
+            "border-right:1px solid rgba(201,168,76,0.25);"
+            "background:#0d0e12; padding:0.9rem 1rem 0.6rem;'>"
+            "<div style='display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.45rem;'>"
 
-            <!-- Header -->
-            <div style="background:linear-gradient(135deg,#1a160a 0%,#0f1118 100%);
-                        padding:0.8rem 1.1rem; border-bottom:1px solid rgba(201,168,76,0.18);
-                        display:flex; align-items:center; gap:0.55rem;">
-                <div style="width:7px; height:7px; border-radius:50%; background:#c9a84c;
-                            box-shadow:0 0 8px rgba(201,168,76,0.9);
-                            animation:none;"></div>
-                <span style="font-family:'DM Mono',monospace; font-size:0.62rem;
-                             letter-spacing:0.2em; text-transform:uppercase;
-                             color:#c9a84c; font-weight:500;">Live Analytics</span>
-            </div>
+            f"<div style='background:rgba(99,179,237,0.08); border:1px solid rgba(99,179,237,0.25);"
+            f"border-radius:5px; padding:0.6rem 0.3rem; text-align:center;'>"
+            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500;"
+            f"color:#63b3ed; line-height:1.1;'>{total_visits:,}</div>"
+            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase;"
+            f"color:#6a6560; margin-top:0.15rem;'>Visitors</div></div>"
 
-            <!-- Body -->
-            <div style="background:#0d0e12; padding:1rem 1.1rem;">
+            f"<div style='background:rgba(104,211,145,0.07); border:1px solid rgba(104,211,145,0.22);"
+            f"border-radius:5px; padding:0.6rem 0.3rem; text-align:center;'>"
+            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500;"
+            f"color:#68d391; line-height:1.1;'>{total_runs:,}</div>"
+            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase;"
+            f"color:#6a6560; margin-top:0.15rem;'>Analyses</div></div>"
 
-                <!-- Stat cards -->
-                <div style="display:grid; grid-template-columns:1fr 1fr 1fr;
-                            gap:0.45rem; margin-bottom:1rem;">
+            f"<div style='background:rgba(201,168,76,0.08); border:1px solid rgba(201,168,76,0.22);"
+            f"border-radius:5px; padding:0.6rem 0.3rem; text-align:center;'>"
+            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500;"
+            f"color:#c9a84c; line-height:1.1;'>{cover_count:,}</div>"
+            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase;"
+            f"color:#6a6560; margin-top:0.15rem;'>Letters</div></div>"
 
-                    <div style="background:rgba(99,179,237,0.08);
-                                border:1px solid rgba(99,179,237,0.25);
-                                border-radius:5px; padding:0.6rem 0.4rem; text-align:center;">
-                        <div style="font-family:'DM Mono',monospace; font-size:1.25rem;
-                                    font-weight:500; color:#63b3ed; line-height:1.1;">{total_visits:,}</div>
-                        <div style="font-size:0.55rem; letter-spacing:0.1em; text-transform:uppercase;
-                                    color:#6a6560; font-family:'DM Mono',monospace; margin-top:0.15rem;">Visitors</div>
-                    </div>
+            "</div></div>",
+            unsafe_allow_html=True
+        )
 
-                    <div style="background:rgba(104,211,145,0.07);
-                                border:1px solid rgba(104,211,145,0.22);
-                                border-radius:5px; padding:0.6rem 0.4rem; text-align:center;">
-                        <div style="font-family:'DM Mono',monospace; font-size:1.25rem;
-                                    font-weight:500; color:#68d391; line-height:1.1;">{total_runs:,}</div>
-                        <div style="font-size:0.55rem; letter-spacing:0.1em; text-transform:uppercase;
-                                    color:#6a6560; font-family:'DM Mono',monospace; margin-top:0.15rem;">Analyses</div>
-                    </div>
+        # — Goal breakdown section title
+        st.markdown(
+            "<div style='border-left:1px solid rgba(201,168,76,0.25);"
+            "border-right:1px solid rgba(201,168,76,0.25);"
+            "background:#0d0e12; padding:0.6rem 1rem 0.5rem;'>"
+            "<div style='font-family:DM Mono,monospace; font-size:0.57rem; letter-spacing:0.16em;"
+            "text-transform:uppercase; color:#4a4845;"
+            "border-top:1px solid rgba(255,255,255,0.05); padding-top:0.6rem;'>"
+            "Goal Breakdown</div></div>",
+            unsafe_allow_html=True
+        )
 
-                    <div style="background:rgba(201,168,76,0.08);
-                                border:1px solid rgba(201,168,76,0.22);
-                                border-radius:5px; padding:0.6rem 0.4rem; text-align:center;">
-                        <div style="font-family:'DM Mono',monospace; font-size:1.25rem;
-                                    font-weight:500; color:#c9a84c; line-height:1.1;">{cover_count:,}</div>
-                        <div style="font-size:0.55rem; letter-spacing:0.1em; text-transform:uppercase;
-                                    color:#6a6560; font-family:'DM Mono',monospace; margin-top:0.15rem;">Letters</div>
-                    </div>
-                </div>
-
-                <!-- Goal breakdown -->
-                <div style="font-family:'DM Mono',monospace; font-size:0.58rem; letter-spacing:0.16em;
-                            text-transform:uppercase; color:#4a4845;
-                            border-top:1px solid rgba(255,255,255,0.04);
-                            padding-top:0.75rem; margin-bottom:0.65rem;">
-                    Goal Breakdown
-                </div>
-                {goals_html}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # — Goal rows (each rendered individually — no nesting issues)
+        goal_items = [
+            ("ATS Keywords",         ats_count,  "#c9a84c", "rgba(201,168,76,0.2)"),
+            ("Impact Bullet Rewrite", star_count, "#63b3ed", "rgba(99,179,237,0.2)"),
+            ("Summary Rewrite",      summ_count, "#68d391", "rgba(104,211,145,0.2)"),
+            ("Skills Gap",           gap_count,  "#fc8181", "rgba(252,129,129,0.2)"),
+        ]
+        for i, (name, count, color, grad) in enumerate(goal_items):
+            w   = pct(count)
+            is_last = (i == len(goal_items) - 1)
+            bottom_radius = "0 0 6px 6px" if is_last else "0"
+            bottom_border = "border-bottom:1px solid rgba(201,168,76,0.25);" if is_last else ""
+            st.markdown(
+                f"<div style='border-left:1px solid rgba(201,168,76,0.25);"
+                f"border-right:1px solid rgba(201,168,76,0.25); {bottom_border}"
+                f"border-radius:{bottom_radius}; background:#0d0e12;"
+                f"padding:0.3rem 1rem 0.55rem;'>"
+                f"<div style='display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.28rem;'>"
+                f"<span style='font-size:0.73rem; color:#b0aa9f;'>{name}</span>"
+                f"<span style='font-family:DM Mono,monospace; font-size:0.7rem; font-weight:500; color:{color};'>"
+                f"{count} <span style='color:#4a4845; font-size:0.58rem;'>· {w}%</span></span></div>"
+                f"<div style='height:5px; border-radius:3px; background:rgba(255,255,255,0.05); overflow:hidden;'>"
+                f"<div style='height:5px; width:{w}%; border-radius:3px;"
+                f"background:linear-gradient(90deg,{color},{grad});'></div></div></div>",
+                unsafe_allow_html=True
+            )
     else:
         st.markdown("""
         <div style="margin-top:1.4rem; padding:0.9rem 1rem; background:#0b0c0f;
