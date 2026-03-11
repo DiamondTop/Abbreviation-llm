@@ -138,10 +138,10 @@ def get_llm_response(prompt, provider):
             client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
             response = client.chat.completions.create(model="deepseek/deepseek-r1", messages=[{"role": "user", "content": prompt}])
             return response.choices[0].message.content
-        elif "Gemini" in provider:
-            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-            model = genai.GenerativeModel("gemini-2.0-flash")
-            return model.generate_content(prompt).text
+        elif "Stepfun" in provider:
+            client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            response = client.chat.completions.create(model="stepfun/step-3.5-flash:free", messages=[{"role": "user", "content": prompt}])
+            return response.choices[0].message.content
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -150,7 +150,7 @@ def get_llm_response(prompt, provider):
 # ==============================
 with st.sidebar:
     st.markdown("### ✦ Settings")
-    PROVIDER = st.selectbox("Reasoning Engine", ["Metal-llama (Reasoning Expert)", "Deep-seek (Logic Focused)", "Gemini 2.0 Flash"])
+    PROVIDER = st.selectbox("Reasoning Engine", ["Metal-llama (Reasoning Expert)", "Deep-seek (Logic Focused)", "Stepfun"])
     st.markdown("---")
     st.markdown("**Attach Context Files**")
     uploaded_files = st.file_uploader("Upload files", type=["pdf", "docx", "txt", "png", "jpg", "jpeg", "xlsx", "xls", "csv"], accept_multiple_files=True, label_visibility="collapsed")
