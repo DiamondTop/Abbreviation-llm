@@ -139,9 +139,9 @@ def get_llm_response(prompt, provider):
         if "Metal-llama" in provider:
             # Correct ID for Llama 3.1 8B Free
             model_id = "meta-llama/llama-3.1-8b-instruct"
-        elif "Deep-seek" in provider:
+        elif "nemotron-3 by Nvidia" in provider:
             # Correct ID for DeepSeek R1 Free
-            model_id = "deepseek/deepseek-r1"
+            model_id = "nvidia/nemotron-3-super-120b-a12b:free"
         elif "Stepfun" in provider:
             # Correct ID for Step-3.5-Flash
             model_id = "stepfun/step-3.5-flash"
