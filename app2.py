@@ -253,11 +253,12 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**Attach Context File**")
     st.caption("Supported: PDF · DOCX · XLS · XLSX · CSV · PNG · JPG · TXT")
-    uploaded_file = st.file_uploader(
-        "Upload file",
-        type=["pdf", "docx", "txt", "png", "jpg", "jpeg", "xlsx", "xls", "csv"],
-        label_visibility="collapsed"
-    )
+    uploaded_files = st.file_uploader(
+    "Upload files",
+    type=["pdf", "docx", "txt", "png", "jpg", "jpeg", "xlsx", "xls", "csv"],
+    accept_multiple_files=True,  # This is the key change
+    label_visibility="collapsed"
+)
 
     # Show a preview badge when file is loaded
     if uploaded_file:
@@ -284,37 +285,27 @@ if st.button("✦ Start Reasoning"):
     if not user_query:
         st.warning("Please enter a question or instruction.")
     else:
-        final_prompt = user_query
-
-        if uploaded_file:
-            uploaded_file.seek(0)   # ensure pointer is at start before extraction
-            with st.spinner("Processing attachment..."):
-                context_text, ftype = extract_text(uploaded_file)
-
-            if context_text.strip():
-                final_prompt = (
-                    f"CONTEXT FROM FILE ({ftype}: {uploaded_file.name}):\n"
-                    f"{context_text}\n\n"
-                    f"USER QUESTION:\n{user_query}"
-                )
-                st.info(f"✔ Context loaded from **{uploaded_file.name}** ({ftype}) — {len(context_text):,} characters extracted.")
+        all_context = []
+        
+        if uploaded_files:
+            with st.spinner(f"Processing {len(uploaded_files)} files..."):
+                for file in uploaded_files:
+                    file.seek(0)
+                    context_text, ftype = extract_text(file)
+                    if context_text.strip():
+                        # Add a header for each file so the AI knows which is which
+                        all_context.append(f"--- START OF FILE: {file.name} ({ftype}) ---\n{context_text}\n--- END OF FILE ---")
+            
+            if all_context:
+                final_context = "\n\n".join(all_context)
+                final_prompt = f"CONTEXT FROM MULTIPLE FILES:\n{final_context}\n\nUSER QUESTION:\n{user_query}"
+                st.info(f"✔ Combined context from {len(uploaded_files)} files loaded.")
             else:
-                st.warning("Could not extract text from the file. Proceeding with your question only.")
+                final_prompt = user_query
+        else:
+            final_prompt = user_query
 
         with st.spinner(f"{PROVIDER} is analyzing..."):
+            # The rest of your LLM call logic remains the same
             answer = get_llm_response(final_prompt, PROVIDER)
-
-            st.markdown("---")
-            st.markdown("### ✦ Analysis Result")
-
-            # Handle the <think> tags for models like DeepSeek
-            if "<think>" in answer:
-                parts = answer.split("</think>")
-                thought_process = parts[0].replace("<think>", "").strip()
-                final_answer = parts[1].strip() if len(parts) > 1 else ""
-
-                with st.expander("View Deep Reasoning Process", expanded=True):
-                    st.markdown(f"*{thought_process}*")
-                st.markdown(f"<div class='reasoning-box'>{final_answer}</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div class='reasoning-box'>{answer}</div>", unsafe_allow_html=True)
+            # ... (your display logic)
