@@ -130,20 +130,56 @@ def extract_text(file) -> tuple[str, str]:
 
 def get_llm_response(prompt, provider):
     try:
+        # Use OpenRouter for all models to keep it simple and free
+        client = OpenAI(
+            api_key=st.secrets["OPENROUTER_API_KEY"], 
+            base_url="https://openrouter.ai/api/v1"
+        )
+        
         if "Metal-llama" in provider:
-            client = OpenAI(api_key=st.secrets["OPENROUTER_API_KEY"], base_url="https://openrouter.ai/api/v1")
-            response = client.chat.completions.create(model="meta-llama/llama-3.1-8b-instruct", messages=[{"role": "user", "content": prompt}])
-            return response.choices[0].message.content
+            # Correct ID for Llama 3.1 8B Free
+            model_id = "meta-llama/llama-3.1-8b-instruct:free"
         elif "Deep-seek" in provider:
-            client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-            response = client.chat.completions.create(model="deepseek/deepseek-r1", messages=[{"role": "user", "content": prompt}])
-            return response.choices[0].message.content
+            # Correct ID for DeepSeek R1 Free
+            model_id = "deepseek/deepseek-r1:free"
         elif "Stepfun" in provider:
-            client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-            response = client.chat.completions.create(model="stepfun/step-3.5-flash", messages=[{"role": "user", "content": prompt}])
-            return response.choices[0].message.content
+            # Correct ID for Step-3.5-Flash
+            model_id = "stepfun/step-3.5-flash"
+        else:
+            model_id = "meta-llama/llama-3.1-8b-instruct:free"
+
+        response = client.chat.completions.create(
+            model=model_id,
+            messages=[{"role": "user", "content": prompt}],
+            # OpenRouter requires these headers for some free models
+            extra_headers={
+                "HTTP-Referer": "http://localhost:8501", 
+                "X-Title": "Reasoning Forge"
+            }
+        )
+        return response.choices[0].message.content
     except Exception as e:
         return f"Error: {str(e)}"
+
+#def get_llm_response(prompt, provider):
+#    try:
+#        if "Metal-llama" in provider:
+#            client = OpenAI(api_key=st.secrets["OPENROUTER_API_KEY"], base_url="https://openrouter.ai/api/v1")
+#            response = client.chat.completions.create(model="meta-llama/llama-3.1-8b-instruct", messages=[{"role": "user", "content": prompt}])
+#            return response.choices[0].message.content
+#        elif "Deep-seek" in provider:
+#            client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+#            response = client.chat.completions.create(model="deepseek/deepseek-r1", messages=[{"role": "user", "content": prompt}])
+#            return response.choices[0].message.content
+#        elif "Stepfun" in provider:
+#            client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+#            response = client.chat.completions.create(model="stepfun/step-3.5-flash", messages=[{"role": "user", "content": prompt}])
+#            return response.choices[0].message.content
+#    except Exception as e:
+#        return f"Error: {str(e)}"
+
+
+
 
 # ==============================
 # SIDEBAR
