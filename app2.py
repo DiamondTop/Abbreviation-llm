@@ -392,7 +392,7 @@ with st.sidebar:
             f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500;"
             f"color:#c9a84c; line-height:1.1;'>{cover_count:,}</div>"
             f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase;"
-            f"color:#6a6560; margin-top:0.15rem;'>Letters</div></div>"
+            f"color:#6a6560; margin-top:0.15rem;'> Cover Letters</div></div>"
 
             "</div></div>",
             unsafe_allow_html=True
