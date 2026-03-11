@@ -511,7 +511,7 @@ st.markdown("<hr/>", unsafe_allow_html=True)
 # ==============================
 prompt_options = {
     "✦  ATS Keyword Optimization":     "Analyze the Job Description for top keywords and modify my resume bullet points to include them naturally.",
-    "✦  STAR Method Bullet Rewrite":   "Rewrite my work experience bullet points using the STAR method (Situation, Task, Action, Result). Focus on quantifiable achievements.",
+    #"✦  STAR Method Bullet Rewrite":   "Rewrite my work experience bullet points using the STAR method (Situation, Task, Action, Result). Focus on quantifiable achievements.",
     "✦  Professional Summary Rewrite": "Draft a compelling 3–4 sentence professional summary that bridges my current experience with this specific job.",
     "✦  Skills Gap Analysis":          "Compare my resume against the job description. Identify exactly what hard and soft skills I am currently missing.",
 }
@@ -653,7 +653,7 @@ if run:
                 st.download_button(
                     "↓  Download Analysis",
                     data=display_text,
-                    file_name="resume_analysis.txt",
+                    file_name="resume_analysis.doc",
                     mime="text/plain"
                 )
 
