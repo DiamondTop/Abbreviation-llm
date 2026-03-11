@@ -172,12 +172,14 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
 # ==============================
 # SESSION STATE INIT
 # ==============================
-# message shape: {"role": "user"|"assistant", "content": str, "elapsed": float|None}
-if "messages"     not in st.session_state: st.session_state.messages     = []
-if "file_context" not in st.session_state: st.session_state.file_context = ""
-if "file_names"   not in st.session_state: st.session_state.file_names   = []
-# FIX: persist the typed query so file uploads don't wipe it
-if "pending_query" not in st.session_state: st.session_state.pending_query = ""
+if "messages"      not in st.session_state: st.session_state.messages      = []
+if "file_context"  not in st.session_state: st.session_state.file_context  = ""
+if "file_names"    not in st.session_state: st.session_state.file_names    = []
+# input_counter: incrementing this generates a brand-new widget key,
+# which clears the box — without ever writing to a widget-bound state key.
+if "input_counter" not in st.session_state: st.session_state.input_counter = 0
+# saved_input: preserves typed text across non-send reruns (e.g. file upload)
+if "saved_input"   not in st.session_state: st.session_state.saved_input   = ""
 
 # ==============================
 # HELPERS
@@ -209,7 +211,6 @@ def extract_text(file) -> tuple[str, str]:
 
 
 def format_for_display(text: str) -> str:
-    """Convert LLM plain-text into clean HTML — no giant blank gaps."""
     escaped = html.escape(text)
     paragraphs = re.split(r'\n{2,}', escaped.strip())
     return "".join(
@@ -224,6 +225,12 @@ def elapsed_label(seconds: float) -> str:
     return f"{int(seconds // 60)}m {seconds % 60:.0f}s"
 
 
+def save_input():
+    """on_change callback — keeps saved_input in sync as the user types."""
+    current_key = f"input_{st.session_state.input_counter}"
+    st.session_state.saved_input = st.session_state.get(current_key, "")
+
+
 def build_messages_for_api(file_context: str, history: list) -> list:
     api_messages = []
     for i, msg in enumerate(history):
@@ -235,7 +242,6 @@ def build_messages_for_api(file_context: str, history: list) -> list:
 
 
 def get_llm_response(history: list, file_context: str, provider: str) -> tuple[str, float]:
-    """Returns (response_text, elapsed_seconds)."""
     try:
         client = OpenAI(
             api_key=st.secrets["OPENROUTER_API_KEY"],
@@ -270,7 +276,6 @@ def get_llm_response(history: list, file_context: str, provider: str) -> tuple[s
 
 
 def build_download_text(history: list, provider: str, file_names: list) -> str:
-    """Export the full conversation as a plain-text file."""
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     files_str = ", ".join(file_names) if file_names else "None"
     div = "=" * 60
@@ -313,7 +318,6 @@ with st.sidebar:
         label_visibility="collapsed"
     )
 
-    # Extract & cache file context when files change
     current_names = [f.name for f in uploaded_files] if uploaded_files else []
     if current_names != st.session_state.file_names:
         if uploaded_files:
@@ -335,7 +339,8 @@ with st.sidebar:
 
     if st.button("🗑 Clear Conversation"):
         st.session_state.messages     = []
-        st.session_state.pending_query = ""
+        st.session_state.saved_input  = ""
+        st.session_state.input_counter += 1   # reset the text box too
         st.rerun()
 
     if st.session_state.messages:
@@ -392,19 +397,26 @@ for msg in st.session_state.messages:
 if st.session_state.messages:
     st.markdown("<hr class='turn-divider'>", unsafe_allow_html=True)
 
-# ── Input — value bound to session_state so uploads don't wipe it ──
+# ── Input box ────────────────────────────────────────────────
+# Key changes on send (input_counter increments) → widget resets cleanly.
+# Key stays the same on file-upload reruns → typed text is preserved.
+# on_change keeps saved_input in sync so the value survives any rerun.
+input_key = f"input_{st.session_state.input_counter}"
+
 user_query = st.text_area(
     "Your message:" if st.session_state.messages else "Define your problem:",
     height=130,
     placeholder="Continue the conversation, or ask a follow-up question...",
-    key="pending_query",   # bound directly to st.session_state.pending_query
+    value=st.session_state.saved_input,
+    key=input_key,
+    on_change=save_input,
 )
 
 send = st.button("✦ Send" if st.session_state.messages else "✦ Start Reasoning")
 
 # ── Handle send ──────────────────────────────────────────────
 if send:
-    query = st.session_state.pending_query.strip()
+    query = st.session_state.get(input_key, "").strip()
     if not query:
         st.warning("Please enter a message.")
     else:
@@ -423,6 +435,7 @@ if send:
             "role": "assistant", "content": reply, "elapsed": elapsed
         })
 
-        # Clear the input box after sending
-        st.session_state.pending_query = ""
+        # Clear input: reset saved text and generate a new widget key
+        st.session_state.saved_input   = ""
+        st.session_state.input_counter += 1
         st.rerun()
