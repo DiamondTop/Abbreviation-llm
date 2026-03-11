@@ -140,7 +140,7 @@ def get_llm_response(prompt, provider):
             return response.choices[0].message.content
         elif "Stepfun" in provider:
             client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-            response = client.chat.completions.create(model="stepfun/step-3.5-flash:free", messages=[{"role": "user", "content": prompt}])
+            response = client.chat.completions.create(model="stepfun/step-3.5-flash", messages=[{"role": "user", "content": prompt}])
             return response.choices[0].message.content
     except Exception as e:
         return f"Error: {str(e)}"
