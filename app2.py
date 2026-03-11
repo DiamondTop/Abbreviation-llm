@@ -8,6 +8,8 @@ from docx import Document
 import pandas as pd
 from openai import OpenAI
 import google.generativeai as genai
+import datetime
+import html
 
 # ==============================
 # PAGE CONFIG & STYLES
@@ -19,7 +21,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Clean light theme CSS
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
@@ -67,23 +68,47 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     border-radius: 4px !important;
     font-weight: 600 !important;
     width: 100%;
+    transition: background 0.2s ease !important;
+}
+.stButton > button:hover {
+    background: var(--gold-light) !important;
 }
 
+/* Download button — outlined to distinguish from primary */
+.stDownloadButton > button {
+    background: transparent !important;
+    color: var(--gold) !important;
+    border: 1.5px solid var(--gold) !important;
+    border-radius: 4px !important;
+    font-weight: 600 !important;
+    width: 100%;
+    transition: all 0.2s ease !important;
+}
+.stDownloadButton > button:hover {
+    background: var(--gold) !important;
+    color: #ffffff !important;
+}
+
+/* FIX: white-space:normal removes giant blank gaps from LLM newlines */
 .reasoning-box {
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 2rem;
+    white-space: normal;
+    word-wrap: break-word;
     line-height: 1.85;
-    white-space: pre-wrap;
     color: var(--text);
     position: relative;
     box-shadow: 0 2px 12px rgba(0,0,0,0.06);
 }
-
 .reasoning-box::before {
     content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    border-radius: 8px 8px 0 0;
     background: linear-gradient(90deg, var(--gold), var(--gold-light), transparent);
+}
+.reasoning-box p {
+    margin: 0 0 0.75em 0;
 }
 
 .file-badge {
@@ -96,6 +121,13 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     color: var(--gold);
     margin-bottom: 0.4rem;
     font-weight: 500;
+}
+
+.result-meta {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+    font-style: italic;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -128,22 +160,49 @@ def extract_text(file) -> tuple[str, str]:
     except Exception as e:
         return f"Error: {e}", "Unknown"
 
+
+def format_for_display(text: str) -> str:
+    """Convert LLM plain-text into clean HTML paragraphs — no giant blank gaps."""
+    escaped = html.escape(text)
+    # Split on 2+ newlines = paragraph break
+    paragraphs = re.split(r'\n{2,}', escaped.strip())
+    parts = []
+    for para in paragraphs:
+        # Single newlines within a paragraph → <br>
+        para = para.replace('\n', '<br>')
+        parts.append(f"<p>{para}</p>")
+    return "".join(parts)
+
+
+def build_download_text(question: str, answer: str, provider: str, files: list) -> str:
+    """Plain-text export of the full session."""
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    file_names = ", ".join(f.name for f in files) if files else "None"
+    div = "=" * 60
+    return (
+        f"REASONING FORGE — EXPORT\n{div}\n"
+        f"Date      : {timestamp}\n"
+        f"Engine    : {provider}\n"
+        f"Files     : {file_names}\n"
+        f"{div}\n\n"
+        f"QUESTION\n{question}\n\n"
+        f"{div}\n\n"
+        f"ANSWER\n{answer}\n"
+    )
+
+
 def get_llm_response(prompt, provider):
     try:
-        # Use OpenRouter for all models to keep it simple and free
         client = OpenAI(
-            api_key=st.secrets["OPENROUTER_API_KEY"], 
+            api_key=st.secrets["OPENROUTER_API_KEY"],
             base_url="https://openrouter.ai/api/v1"
         )
-        
+
         if "Metal-llama" in provider:
-            # Correct ID for Llama 3.1 8B Free
-            model_id = "meta-llama/llama-3.1-8b-instruct"
+            model_id = "meta-llama/llama-3.1-8b-instruct:free"
         elif "nemotron-3 by Nvidia" in provider:
-            # Correct ID for DeepSeek R1 Free
             model_id = "nvidia/nemotron-3-super-120b-a12b:free"
         elif "Stepfun" in provider:
-            # Correct ID for Step-3.5-Flash
             model_id = "stepfun/step-3.5-flash:free"
         else:
             model_id = "meta-llama/llama-3.1-8b-instruct:free"
@@ -151,9 +210,8 @@ def get_llm_response(prompt, provider):
         response = client.chat.completions.create(
             model=model_id,
             messages=[{"role": "user", "content": prompt}],
-            # OpenRouter requires these headers for some free models
             extra_headers={
-                "HTTP-Referer": "http://localhost:8501", 
+                "HTTP-Referer": "http://localhost:8501",
                 "X-Title": "Reasoning Forge"
             }
         )
@@ -161,36 +219,24 @@ def get_llm_response(prompt, provider):
     except Exception as e:
         return f"Error: {str(e)}"
 
-#def get_llm_response(prompt, provider):
-#    try:
-#        if "Metal-llama" in provider:
-#            client = OpenAI(api_key=st.secrets["OPENROUTER_API_KEY"], base_url="https://openrouter.ai/api/v1")
-#            response = client.chat.completions.create(model="meta-llama/llama-3.1-8b-instruct", messages=[{"role": "user", "content": prompt}])
-#            return response.choices[0].message.content
-#        elif "nemotron-3 by Nvidia" in provider:
-#            client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-#            response = client.chat.completions.create(model="nvidia/nemotron-3-super-120b-a12b:free", messages=[{"role": "user", "content": prompt}])
-#            return response.choices[0].message.content
-#        elif "Stepfun" in provider:
-#            client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-#            response = client.chat.completions.create(model="stepfun/step-3.5-flash", messages=[{"role": "user", "content": prompt}])
-#            return response.choices[0].message.content
-#    except Exception as e:
-#        return f"Error: {str(e)}"
-
-
-
 
 # ==============================
 # SIDEBAR
 # ==============================
 with st.sidebar:
     st.markdown("### ✦ Settings")
-    PROVIDER = st.selectbox("Reasoning Engine", ["Metal-llama (Reasoning Expert)", "nemotron-3 by Nvidia (Logic Focused)", "Stepfun"])
+    PROVIDER = st.selectbox(
+        "Reasoning Engine",
+        ["Metal-llama (Reasoning Expert)", "nemotron-3 by Nvidia (Logic Focused)", "Stepfun"]
+    )
     st.markdown("---")
     st.markdown("**Attach Context Files**")
-    uploaded_files = st.file_uploader("Upload files", type=["pdf", "docx", "txt", "png", "jpg", "jpeg", "xlsx", "xls", "csv"], accept_multiple_files=True, label_visibility="collapsed")
-    
+    uploaded_files = st.file_uploader(
+        "Upload files",
+        type=["pdf", "docx", "txt", "png", "jpg", "jpeg", "xlsx", "xls", "csv"],
+        accept_multiple_files=True,
+        label_visibility="collapsed"
+    )
     if uploaded_files:
         for f in uploaded_files:
             st.markdown(f"<span class='file-badge'>📎 {f.name}</span>", unsafe_allow_html=True)
@@ -198,30 +244,75 @@ with st.sidebar:
 # ==============================
 # MAIN INTERFACE
 # ==============================
-st.markdown("<h1 style='font-family:Cormorant Garamond; font-size:3.5rem; font-weight:300;'>Reasoning <em style='color:#a0732a; font-style:italic;'>Forge</em></h1>", unsafe_allow_html=True)
+st.markdown(
+    "<h1 style='font-family:Cormorant Garamond; font-size:3.5rem; font-weight:300; margin-bottom:0;'>"
+    "Reasoning <em style='color:#a0732a; font-style:italic;'>Forge</em></h1>",
+    unsafe_allow_html=True
+)
+st.markdown(
+    "<p style='color:#6b6560; margin-top:0.25rem; margin-bottom:1.5rem;'>"
+    "Powered by OpenRouter · Ask anything · Upload any file</p>",
+    unsafe_allow_html=True
+)
 
-user_query = st.text_area("Define your problem:", height=200, placeholder="Ask a question about the uploaded files...")
+user_query = st.text_area(
+    "Define your problem:",
+    height=180,
+    placeholder="Ask a question about the uploaded files, or pose any complex problem..."
+)
 
 if st.button("✦ Start Reasoning"):
     if not user_query:
         st.warning("Please enter a question.")
     else:
+        # ── Extract file context ─────────────────────────────
         combined_context = ""
         if uploaded_files:
-            with st.spinner(f"Extracting data from {len(uploaded_files)} files..."):
+            with st.spinner(f"Extracting data from {len(uploaded_files)} file(s)..."):
                 for f in uploaded_files:
                     f.seek(0)
                     text, ftype = extract_text(f)
                     combined_context += f"\n\n--- FILE: {f.name} ({ftype}) ---\n{text}\n"
-        
-        final_prompt = f"CONTEXT:\n{combined_context}\n\nUSER QUESTION:\n{user_query}" if combined_context else user_query
 
+        final_prompt = (
+            f"CONTEXT:\n{combined_context}\n\nUSER QUESTION:\n{user_query}"
+            if combined_context else user_query
+        )
+
+        # ── Call LLM ─────────────────────────────────────────
         with st.spinner(f"{PROVIDER} is thinking..."):
             answer = get_llm_response(final_prompt, PROVIDER)
-            st.markdown("---")
-            if "<think>" in answer:
-                parts = answer.split("</think>")
-                st.expander("View Reasoning Process", expanded=True).markdown(f"*{parts[0].replace('<think>', '').strip()}*")
-                st.markdown(f"<div class='reasoning-box'>{parts[1].strip()}</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div class='reasoning-box'>{answer}</div>", unsafe_allow_html=True)
+
+        st.markdown("---")
+        st.markdown("### ✦ Analysis Result")
+
+        # Strip <think> block if present (DeepSeek-style models)
+        clean_answer = answer
+        if "<think>" in answer and "</think>" in answer:
+            parts = answer.split("</think>")
+            thought = parts[0].replace("<think>", "").strip()
+            clean_answer = parts[1].strip()
+            with st.expander("View Reasoning Process", expanded=False):
+                st.markdown(f"*{thought}*")
+
+        # Meta line
+        ts = datetime.datetime.now().strftime("%d %b %Y, %H:%M")
+        st.markdown(f"<p class='result-meta'>Generated {ts} · {PROVIDER}</p>", unsafe_allow_html=True)
+
+        # Result box — properly formatted, no blank-space gaps
+        st.markdown(
+            f"<div class='reasoning-box'>{format_for_display(clean_answer)}</div>",
+            unsafe_allow_html=True
+        )
+
+        # ── Download button ──────────────────────────────────
+        st.markdown("<div style='margin-top:1rem;'>", unsafe_allow_html=True)
+        download_content = build_download_text(user_query, clean_answer, PROVIDER, uploaded_files or [])
+        filename = f"reasoning_forge_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        st.download_button(
+            label="⬇ Download Result",
+            data=download_content,
+            file_name=filename,
+            mime="text/plain"
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
