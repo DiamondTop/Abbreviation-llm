@@ -338,7 +338,7 @@ with st.sidebar:
     <div style="margin-top:1.2rem; padding:1rem; background:rgba(201,168,76,0.06);
                 border:1px solid rgba(201,168,76,0.15); border-radius:4px;">
         <div style="font-size:0.78rem; color:#9a958f; line-height:1.8;">
-            <span style="color:#c9a84c;">✦</span> Your files are never stored.<br/>
+            <span style="color:#c9a84c;">✦</span> Your files are never stored on this website.<br/>
             <span style="color:#c9a84c;">✦</span> Analysis runs in real-time.<br/>
             <span style="color:#c9a84c;">✦</span> Cover letter auto-generated on ATS runs.<br/>
             <span style="color:#c9a84c;">✦</span> Download your edits instantly.
