@@ -2,7 +2,6 @@ import streamlit as st
 import re
 import time as _time
 import requests
-from datetime import datetime, timezone
 from pypdf import PdfReader
 from docx import Document
 from openai import OpenAI
@@ -84,8 +83,29 @@ h1, h2, h3, h4 { font-family: var(--serif) !important; font-weight: 300 !importa
     border-color: var(--gold) !important;
     box-shadow: 0 0 0 2px rgba(201,168,76,0.12) !important;
 }
-.stTextArea textarea::placeholder               { color: var(--placeholder) !important; opacity: 1 !important; }
-.stTextArea label, [data-testid="stWidgetLabel"] p {
+.stTextArea textarea::placeholder { color: var(--placeholder) !important; opacity: 1 !important; }
+
+/* ── text_input styling (job title field) ── */
+.stTextInput > div > div > input {
+    background: var(--bg2) !important;
+    border: 1px solid rgba(201,168,76,0.18) !important;
+    border-radius: 4px !important;
+    color: var(--text) !important;
+    font-family: var(--sans) !important;
+    font-size: 0.92rem !important;
+    line-height: 1.75 !important;
+    padding: 0.75rem 1rem !important;
+    transition: border-color 0.25s, box-shadow 0.25s !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+.stTextInput > div > div > input:focus {
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 0 2px rgba(201,168,76,0.12) !important;
+}
+.stTextInput > div > div > input::placeholder { color: var(--placeholder) !important; opacity: 1 !important; }
+
+.stTextArea label, .stTextInput label, [data-testid="stWidgetLabel"] p {
     font-family: var(--mono) !important; font-size: 0.65rem !important;
     letter-spacing: 0.18em !important; text-transform: uppercase !important;
     color: var(--gold) !important; margin-bottom: 0.4rem !important; font-weight: 400 !important;
@@ -108,7 +128,6 @@ div[data-baseweb="option"]:hover { background: var(--bg3) !important; color: var
     border-radius: 4px !important;
     padding: 0.5rem !important;
 }
-/* Every inner container must be forced dark */
 [data-testid="stFileUploader"] > div,
 [data-testid="stFileUploader"] section,
 [data-testid="stFileUploader"] section > div,
@@ -119,7 +138,6 @@ div[data-baseweb="option"]:hover { background: var(--bg3) !important; color: var
     background-color: var(--bg2) !important;
     border: none !important;
 }
-/* Hover state — slightly lighter dark */
 [data-testid="stFileUploader"]:hover {
     border-color: rgba(201,168,76,0.55) !important;
     background: var(--bg3) !important;
@@ -131,48 +149,25 @@ div[data-baseweb="option"]:hover { background: var(--bg3) !important; color: var
     background: var(--bg3) !important;
     background-color: var(--bg3) !important;
 }
-/* Instruction text */
-[data-testid="stFileUploaderDropzoneInstructions"] {
-    background: transparent !important;
-}
-[data-testid="stFileUploaderDropzoneInstructions"] > div > span {
-    color: var(--muted) !important;
-}
-[data-testid="stFileUploaderDropzoneInstructions"] > div > small {
-    color: var(--placeholder) !important;
-}
-/* SVG upload icon */
-[data-testid="stFileUploader"] svg {
-    color: var(--gold) !important;
-    fill: var(--gold) !important;
-    opacity: 0.7;
-}
-/* Browse button */
+[data-testid="stFileUploaderDropzoneInstructions"] { background: transparent !important; }
+[data-testid="stFileUploaderDropzoneInstructions"] > div > span { color: var(--muted) !important; }
+[data-testid="stFileUploaderDropzoneInstructions"] > div > small { color: var(--placeholder) !important; }
+[data-testid="stFileUploader"] svg { color: var(--gold) !important; fill: var(--gold) !important; opacity: 0.7; }
 [data-testid="stFileUploader"] button {
     background: transparent !important; color: var(--gold) !important;
     border: 1px solid var(--border) !important; border-radius: 3px !important;
     font-family: var(--mono) !important; font-size: 0.72rem !important;
-    letter-spacing: 0.1em !important; text-transform: uppercase !important;
+    letter-spacing: 0.1em !important; text-transform: uppercase !important; transition: all 0.2s !important;
 }
-[data-testid="stFileUploader"] button:hover {
-    border-color: var(--gold) !important;
-    background: var(--gold-dim) !important;
-}
-/* Uploaded file pill */
+[data-testid="stFileUploader"] button:hover { border-color: var(--gold) !important; background: var(--gold-dim) !important; }
 [data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] {
-    background: var(--bg3) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 3px !important;
+    background: var(--bg3) !important; border: 1px solid var(--border) !important; border-radius: 3px !important;
 }
 [data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] span,
-[data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] p {
-    color: var(--text) !important;
-}
-/* Label above the uploader */
+[data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] p { color: var(--text) !important; }
 [data-testid="stFileUploader"] label {
     font-family: var(--mono) !important; font-size: 0.65rem !important;
-    letter-spacing: 0.18em !important; text-transform: uppercase !important;
-    color: var(--gold) !important;
+    letter-spacing: 0.18em !important; text-transform: uppercase !important; color: var(--gold) !important;
 }
 
 .stButton > button {
@@ -180,16 +175,17 @@ div[data-baseweb="option"]:hover { background: var(--bg3) !important; color: var
     border: 1px solid var(--gold) !important; border-radius: 3px !important;
     font-family: var(--sans) !important; font-size: 0.8rem !important;
     font-weight: 600 !important; letter-spacing: 0.12em !important;
-    text-transform: uppercase !important; padding: 0.7rem 2.2rem !important;
+    text-transform: uppercase !important; padding: 0.7rem 2.2rem !important; transition: all 0.2s ease !important;
 }
 .stButton > button:hover {
     background: transparent !important; color: var(--gold) !important;
+    transform: translateY(-1px) !important; box-shadow: 0 8px 30px rgba(201,168,76,0.2) !important;
 }
 .stDownloadButton > button {
     background: transparent !important; color: var(--gold) !important;
     border: 1px solid var(--border) !important; border-radius: 3px !important;
     font-size: 0.78rem !important; letter-spacing: 0.1em !important;
-    text-transform: uppercase !important;
+    text-transform: uppercase !important; transition: all 0.2s !important;
 }
 .stDownloadButton > button:hover { border-color: var(--gold) !important; background: var(--gold-dim) !important; }
 
@@ -208,10 +204,10 @@ hr { border: none !important; border-top: 1px solid var(--border) !important; ma
     font-weight: 300 !important; color: var(--gold) !important; line-height: 1.1 !important;
 }
 [data-testid="stMetricDelta"] { color: #28A745 !important; font-size: 0.78rem !important; }
-.stAlert { background: var(--bg2) !important; border: 1px solid var(--border) !important; border-radius: 3px !important; }
+.stAlert { background: var(--bg2) !important; border: 1px solid var(--border) !important; border-radius: 3px !important; color: var(--text) !important; }
 
 .stMarkdown p, .stMarkdown li { color: var(--text) !important; line-height: 1.85 !important; font-size: 0.95rem !important; }
-.stMarkdown h3 { font-family: var(--serif) !important; color: var(--gold) !important; font-size: 1.4rem !important; margin-top: 1.5rem !important; }
+.stMarkdown h3 { font-family: var(--serif) !important; color: var(--gold) !important; font-size: 1.4rem !important; margin-top: 1.5rem !important; font-weight: 300 !important; }
 .stMarkdown strong { color: var(--gold-light) !important; font-weight: 500 !important; }
 .stMarkdown code { background: var(--bg3) !important; border: 1px solid var(--border) !important; border-radius: 3px !important; color: var(--gold) !important; font-family: var(--mono) !important; font-size: 0.82rem !important; padding: 0.15rem 0.45rem !important; }
 
@@ -335,7 +331,8 @@ with st.sidebar:
             <div style="margin-bottom:0.4rem;">① Upload your resume</div>
             <div style="margin-bottom:0.4rem;">② Paste the job description</div>
             <div style="margin-bottom:0.4rem;">③ Choose your goal</div>
-            <div>④ Run analysis → download</div>
+            <div style="margin-bottom:0.4rem;">④ Add target job title <em style="color:#c9a84c;">(sharpens AI output)</em></div>
+            <div>⑤ Run analysis → download</div>
         </div>
     </div>
     <div style="margin-top:1.2rem; padding:1rem; background:rgba(201,168,76,0.06);
@@ -381,44 +378,62 @@ with st.sidebar:
             "<div style='display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.45rem;'>"
             f"<div style='background:rgba(99,179,237,0.08); border:1px solid rgba(99,179,237,0.25);"
             f"border-radius:5px; padding:0.6rem 0.3rem; text-align:center;'>"
-            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500; color:#63b3ed;'>{total_visits:,}</div>"
-            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase; color:#6a6560;'>Visitors</div></div>"
+            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500;"
+            f"color:#63b3ed; line-height:1.1;'>{total_visits:,}</div>"
+            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase;"
+            f"color:#6a6560; margin-top:0.15rem;'>Visitors</div></div>"
             f"<div style='background:rgba(104,211,145,0.07); border:1px solid rgba(104,211,145,0.22);"
             f"border-radius:5px; padding:0.6rem 0.3rem; text-align:center;'>"
-            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500; color:#68d391;'>{total_runs:,}</div>"
-            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase; color:#6a6560;'>Analyses</div></div>"
+            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500;"
+            f"color:#68d391; line-height:1.1;'>{total_runs:,}</div>"
+            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase;"
+            f"color:#6a6560; margin-top:0.15rem;'>Analyses</div></div>"
             f"<div style='background:rgba(201,168,76,0.08); border:1px solid rgba(201,168,76,0.22);"
             f"border-radius:5px; padding:0.6rem 0.3rem; text-align:center;'>"
-            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500; color:#c9a84c;'>{cover_count:,}</div>"
-            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase; color:#6a6560;'>Cover Letters</div></div>"
+            f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500;"
+            f"color:#c9a84c; line-height:1.1;'>{cover_count:,}</div>"
+            f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase;"
+            f"color:#6a6560; margin-top:0.15rem;'> Cover Letters</div></div>"
             "</div></div>",
             unsafe_allow_html=True
         )
 
         goal_items = [
-            ("ATS Keywords",          ats_count,  "#c9a84c", "rgba(201,168,76,0.2)"),
+            ("ATS Keywords",         ats_count,  "#c9a84c", "rgba(201,168,76,0.2)"),
             ("Impact Bullet Rewrite", star_count, "#63b3ed", "rgba(99,179,237,0.2)"),
-            ("Summary Rewrite",       summ_count, "#68d391", "rgba(104,211,145,0.2)"),
-            ("Skills Gap",            gap_count,  "#fc8181", "rgba(252,129,129,0.2)"),
+            ("Summary Rewrite",      summ_count, "#68d391", "rgba(104,211,145,0.2)"),
+            ("Skills Gap",           gap_count,  "#fc8181", "rgba(252,129,129,0.2)"),
         ]
         for i, (name, count, color, grad) in enumerate(goal_items):
-            w = pct(count)
+            w   = pct(count)
             is_last = (i == len(goal_items) - 1)
             bottom_radius = "0 0 6px 6px" if is_last else "0"
             bottom_border = "border-bottom:1px solid rgba(201,168,76,0.25);" if is_last else ""
             st.markdown(
                 f"<div style='border-left:1px solid rgba(201,168,76,0.25);"
                 f"border-right:1px solid rgba(201,168,76,0.25); {bottom_border}"
-                f"border-radius:{bottom_radius}; background:#0d0e12; padding:0.3rem 1rem 0.55rem;'>"
+                f"border-radius:{bottom_radius}; background:#0d0e12;"
+                f"padding:0.3rem 1rem 0.55rem;'>"
                 f"<div style='display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.28rem;'>"
                 f"<span style='font-size:0.73rem; color:#b0aa9f;'>{name}</span>"
-                f"<span style='font-family:DM Mono,monospace; font-size:0.7rem; color:{color};'>"
+                f"<span style='font-family:DM Mono,monospace; font-size:0.7rem; font-weight:500; color:{color};'>"
                 f"{count} <span style='color:#4a4845; font-size:0.58rem;'>· {w}%</span></span></div>"
                 f"<div style='height:5px; border-radius:3px; background:rgba(255,255,255,0.05); overflow:hidden;'>"
                 f"<div style='height:5px; width:{w}%; border-radius:3px;"
                 f"background:linear-gradient(90deg,{color},{grad});'></div></div></div>",
                 unsafe_allow_html=True
             )
+    else:
+        st.markdown("""
+        <div style="margin-top:1.4rem; padding:0.9rem 1rem; background:#0b0c0f;
+                    border:1px dashed rgba(201,168,76,0.15); border-radius:4px;">
+            <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.14em;
+                        text-transform:uppercase; color:#4a4845; margin-bottom:0.3rem;">Analytics</div>
+            <div style="font-size:0.75rem; color:#4a4845; line-height:1.6;">
+                Add Supabase credentials to secrets.toml to enable live analytics.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ==============================
@@ -426,7 +441,7 @@ with st.sidebar:
 # ==============================
 model_map = {
     "Step-3.5-Flash (StepFun · Recommended)": "stepfun/step-3.5-flash:free",
-    "Nemo via Nvidia":                         "nvidia/nemotron-3-super-120b-a12b:free",
+    "Nemo via Nvidia":            "nvidia/nemotron-3-super-120b-a12b:free",
 }
 
 if "Gemini" not in PROVIDER:
@@ -456,6 +471,33 @@ def extract_text(file):
         return ""
 
 
+# ══════════════════════════════════════════════════════
+# NEW: inject_job_title — appends a focused role directive
+# to any system prompt so language, tone, and keywords
+# are calibrated to the exact position being applied for.
+# ══════════════════════════════════════════════════════
+def inject_job_title(base_task: str, job_title: str) -> str:
+    if not job_title.strip():
+        return base_task      # no change if field is empty
+
+    return base_task + f"""
+
+TARGET JOB TITLE: "{job_title.strip()}"
+
+Use this target job title to sharpen every part of your response:
+- Mirror the exact terminology, seniority level, and industry language a \
+hiring manager recruiting for this specific role would expect to see
+- Prioritise the skills, action verbs, and quantified achievements that carry \
+the most weight for a "{job_title.strip()}" (e.g. a Senior Data Engineer resume \
+should foreground pipeline design and infrastructure ownership — not generic "analysis")
+- Rewrite any vague language so it reads as if crafted by — and for — a strong \
+candidate actively pursuing this exact title
+- Calibrate tone to seniority: junior/associate titles should project energy and \
+growth potential; senior/lead/director titles should project authority, scope, and \
+measurable business impact
+"""
+
+
 def call_llm(system_task, user_content, add_score=True):
     scoring_instruction = (
         "\n\nCRITICAL: Begin your response with 'MATCH_SCORE: [number]' (0–100) "
@@ -479,18 +521,34 @@ def call_llm(system_task, user_content, add_score=True):
         return ""
 
 
-def generate_cover_letter(job_desc, resume_text):
-    system_task = """You are an expert career coach and professional writer.
-Write a compelling, personalized cover letter based on the candidate's resume and the job description provided.
+def generate_cover_letter(job_desc, resume_text, job_title: str):
+    # Build a role-specific instruction when a title is given
+    title_clause  = f" for the **{job_title.strip()}** position" if job_title.strip() else ""
+    title_persona = (
+        f"\n- Write from the perspective of a strong {job_title.strip()} candidate — "
+        f"every sentence should reinforce that professional identity through "
+        f"role-appropriate vocabulary, achievements, and tone"
+        if job_title.strip() else ""
+    )
+
+    system_task = f"""You are an expert career coach and professional writer.
+Write a compelling, personalized cover letter{title_clause} based on the candidate's \
+resume and the job description provided.
+
 The cover letter must:
 - Be 3–4 paragraphs, professional but warm in tone
 - Open with a strong hook that references the specific role and company
-- Highlight 2–3 of the candidate's most relevant experiences from their resume that directly match the job requirements
+- Highlight 2–3 of the candidate's most relevant experiences from their resume \
+that directly match the job requirements
 - Include at least one quantified achievement from the resume
 - Close with a confident call to action
-- NOT use generic filler phrases like "I am writing to express my interest..."
-- Sound like a real human wrote it, not a template
-Output ONLY the cover letter text. Start directly with "Dear Hiring Manager," or a named salutation if available."""
+- NOT use generic filler phrases like "I am writing to express my interest..." \
+or "I am a hard worker"
+- Sound like a real human wrote it, not a template{title_persona}
+
+Output ONLY the cover letter text. Start directly with "Dear Hiring Manager," \
+or a named salutation if available."""
+
     return call_llm(system_task, f"JOB DESCRIPTION:\n{job_desc}\n\nRESUME:\n{resume_text}", add_score=False)
 
 
@@ -504,11 +562,6 @@ def get_score_color(score):
 # PROGRESS BAR HELPER
 # ==============================
 def make_progress_ui(steps: list):
-    """
-    Returns (container, advance_fn).
-    Call advance_fn(i, label) to move to step i.
-    Call advance_fn(None) to clear the whole bar.
-    """
     container = st.empty()
 
     def render(current_i):
@@ -520,7 +573,6 @@ def make_progress_ui(steps: list):
         bar_pct = int(current_i / total * 100)
         icon, label = steps[current_i]
 
-        # Build step dots HTML
         dots_html = ""
         for si, (sicon, slabel) in enumerate(steps):
             if si < current_i:
@@ -552,26 +604,20 @@ def make_progress_ui(steps: list):
         container.markdown(
             f"<div style='background:#111318; border:1px solid rgba(201,168,76,0.28);"
             f"border-radius:10px; padding:1.5rem 1.8rem; margin-bottom:1.4rem;'>"
-
-            # Header row
             f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;'>"
             f"<div style='display:flex; align-items:center; gap:0.6rem;'>"
             f"<div style='width:8px; height:8px; border-radius:50%; background:#c9a84c;"
-            f"box-shadow:0 0 10px rgba(201,168,76,0.9); animation:pulse 1.5s infinite;'></div>"
+            f"box-shadow:0 0 10px rgba(201,168,76,0.9);'></div>"
             f"<span style='font-family:DM Mono,monospace; font-size:0.68rem; letter-spacing:0.14em;"
             f"text-transform:uppercase; color:#c9a84c;'>{icon} &nbsp;{label}</span>"
             f"</div>"
             f"<span style='font-family:DM Mono,monospace; font-size:0.78rem;"
             f"font-weight:600; color:#c9a84c;'>{bar_pct}%</span>"
             f"</div>"
-
-            # Progress track
             f"<div style='height:6px; background:rgba(201,168,76,0.1); border-radius:3px;"
             f"overflow:hidden; margin-bottom:1.4rem;'>"
             f"<div style='height:6px; width:{bar_pct}%; border-radius:3px;"
             f"background:linear-gradient(90deg,#7a5520,#c9a84c,#e8c87a);'></div></div>"
-
-            # Step dots
             f"<div style='display:flex; align-items:flex-start; justify-content:center;'>"
             f"{dots_html}</div>"
             f"</div>",
@@ -599,7 +645,7 @@ st.markdown("""
         </div>
         <h1 style="font-family:'Cormorant Garamond',Georgia,serif;
                    font-size:clamp(2.6rem,5.5vw,4.6rem); font-weight:300;
-                   line-height:1.05; color:#f0ede6; margin-bottom:0.7rem;">
+                   line-height:1.05; color:#f0ede6; margin-bottom:0.7rem; letter-spacing:-0.01em;">
             Resume<em style="color:#c9a84c; font-style:italic;">Forge</em>
         </h1>
         <p style="font-family:'DM Sans',sans-serif; font-size:0.98rem; color:#9a958f;
@@ -646,7 +692,7 @@ with col2:
 st.markdown("<hr/>", unsafe_allow_html=True)
 
 # ==============================
-# GOAL + INSTRUCTIONS
+# GOAL + JOB TITLE
 # ==============================
 prompt_options = {
     "✦  ATS Keyword Optimization":          "Analyze the Job Description for top keywords and modify my resume bullet points to include them naturally.",
@@ -659,9 +705,11 @@ col3, col4 = st.columns([1.2, 1], gap="large")
 with col3:
     selected_strategy = st.selectbox("Choose Your Goal", list(prompt_options.keys()))
 with col4:
-    custom_instructions = st.text_area(
-        "Additional Instructions (Optional)", height=110,
-        placeholder="e.g. 'Highlight my 10 years of experience in logistics'"
+    # ── CHANGED: single-line text_input, job title replaces freeform instructions
+    job_title = st.text_input(
+        "Target Job Title (Optional)",
+        placeholder="e.g. Senior Data Engineer, Product Manager, UX Designer…",
+        help="Providing a job title anchors the AI's vocabulary, seniority tone, and keyword priority to that specific role."
     )
 
 st.markdown("<br/>", unsafe_allow_html=True)
@@ -695,14 +743,12 @@ if run:
     elif not job_desc.strip():
         st.warning("⚠  Please paste a job description to match against.")
     else:
-        system_task = prompt_options[selected_strategy]
-        if custom_instructions:
-            system_task += f"  Additional user context: {custom_instructions}"
+        # ── Inject job title into the system prompt ──────────
+        system_task = inject_job_title(prompt_options[selected_strategy], job_title)
 
         track(EV_RUN)
         track(GOAL_EVENTS.get(selected_strategy, "goal_other"))
 
-        # ── Step definitions ──────────────────────────────────
         steps_base = [
             ("📄", "Reading resume"),
             ("🔍", "Parsing job description"),
@@ -719,14 +765,13 @@ if run:
         steps = steps_cover if is_ats else steps_base
         total = len(steps) - 1
 
-        # ── Render progress UI ────────────────────────────────
         render_progress = make_progress_ui(steps)
 
         render_progress(0)
         resume_text = extract_text(resume_file)
 
         render_progress(1)
-        _time.sleep(0.35)   # let user see the step
+        _time.sleep(0.35)
 
         render_progress(2)
         result = call_llm(system_task, f"JOB DESCRIPTION:\n{job_desc}\n\nRESUME:\n{resume_text}")
@@ -734,16 +779,15 @@ if run:
         cover_letter_text = ""
         if is_ats and result:
             render_progress(3)
-            cover_letter_text = generate_cover_letter(job_desc, resume_text)
+            # ── Pass job_title so the cover letter mirrors role identity ──
+            cover_letter_text = generate_cover_letter(job_desc, resume_text, job_title)
             if cover_letter_text:
                 track(EV_COVER)
 
-        # Complete → brief pause → clear bar
         render_progress(total)
         _time.sleep(0.6)
-        render_progress(None)   # clear
+        render_progress(None)
 
-        # ── Display results ───────────────────────────────────
         if result:
             score_match = re.search(r"MATCH_SCORE:\s*(\d+)", result)
 
@@ -757,12 +801,17 @@ if run:
                     else "Needs Work"
                 )
 
+                # Show job title badge next to completion notice if provided
+                title_badge = (
+                    f"&nbsp;·&nbsp;<span style='color:#c9a84c;'>{job_title.strip()}</span>"
+                    if job_title.strip() else ""
+                )
                 st.markdown(f"""
                 <div style="padding:0.85rem 1.3rem; background:rgba(40,167,69,0.07);
                             border:1px solid rgba(40,167,69,0.28); border-radius:3px;
                             margin-bottom:1.4rem; font-family:'DM Mono',monospace;
                             font-size:0.68rem; letter-spacing:0.14em; text-transform:uppercase; color:#28A745;">
-                    ✓ &nbsp; Analysis complete · {PROVIDER.split('(')[0].strip()}
+                    ✓ &nbsp; Analysis complete · {PROVIDER.split('(')[0].strip()}{title_badge}
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -790,6 +839,16 @@ if run:
 
             st.markdown("<hr/>", unsafe_allow_html=True)
 
+            # ── Results heading — show job title pill if provided ──
+            title_pill = (
+                f"<span style='display:inline-block; background:rgba(201,168,76,0.1); "
+                f"border:1px solid rgba(201,168,76,0.28); border-radius:20px; "
+                f"padding:0.18rem 0.8rem; font-family:DM Mono,monospace; font-size:0.58rem; "
+                f"letter-spacing:0.12em; text-transform:uppercase; color:#c9a84c; "
+                f"vertical-align:middle; margin-left:0.8rem;'>{job_title.strip()}</span>"
+                if job_title.strip() else ""
+            )
+
             st.markdown(f"""
             <div style="margin-bottom:1.1rem;">
                 <div style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em;
@@ -798,8 +857,8 @@ if run:
                     <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>Results
                 </div>
                 <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
-                            font-weight:300; color:#f0ede6;">
-                    {selected_strategy.replace("✦  ", "")}
+                            font-weight:300; color:#f0ede6; display:flex; align-items:center; flex-wrap:wrap;">
+                    {selected_strategy.replace("✦  ", "")}{title_pill}
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -814,7 +873,6 @@ if run:
                     file_name="resume_analysis.txt", mime="text/plain"
                 )
 
-            # ── Cover Letter Section ──────────────────────────
             if is_ats and cover_letter_text:
                 st.markdown("<hr/>", unsafe_allow_html=True)
 
