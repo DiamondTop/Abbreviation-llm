@@ -228,7 +228,7 @@ hr { border: none !important; border-top: 1px solid var(--border) !important; ma
 </style>
 """, unsafe_allow_html=True)
 
-/* Add these to your existing <style> block */
+
 footer { display: none !important; }
 #MainMenu { display: none !important; }
 [data-testid="stStatusWidget"]  { display: none !important; }
