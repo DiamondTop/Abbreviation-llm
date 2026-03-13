@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ResumeForge — Built for the Job You Want</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0b0c0f;
+      --bg2: #111318;
+      --bg3: #181a21;
+      --gold: #c9a84c;
+      --gold-light: #e8c87a;
+      --gold-dim: rgba(201,168,76,0.15);
+      --text: #f0ede6;
+      --text-muted: #8a8680;
+      --text-dim: #4a4845;
+      --border: rgba(201,168,76,0.18);
+      --white: #ffffff;
+      --serif: 'Cormorant Garamond', Georgia, serif;
+      --sans: 'DM Sans', sans-serif;
+      --mono: 'DM Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-weight: 300;
+      overflow-x: hidden;
+    }
+
+    /* NOISE TEXTURE */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 999;
+      opacity: 0.4;
+    }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.4rem 3rem;
+      border-bottom: 1px solid transparent;
+      transition: all 0.4s ease;
+      backdrop-filter: blur(0px);
+    }
+    nav.scrolled {
+      background: rgba(11,12,15,0.85);
+      border-bottom-color: var(--border);
+      backdrop-filter: blur(20px);
+    }
+    .nav-logo {
+      font-family: var(--serif);
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .nav-logo span { color: var(--gold); }
+    .nav-links {
+      display: flex; align-items: center; gap: 2.5rem;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--gold); }
+    .btn-nav {
+      background: var(--gold);
+      color: var(--bg) !important;
+      padding: 0.55rem 1.4rem;
+      border-radius: 2px;
+      font-weight: 500 !important;
+      letter-spacing: 0.08em !important;
+      transition: background 0.2s !important;
+    }
+    .btn-nav:hover { background: var(--gold-light) !important; color: var(--bg) !important; }
+
+    /* HERO */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; justify-content: center;
+      position: relative;
+      padding: 8rem 3rem 5rem;
+      overflow: hidden;
+    }
+
+    /* grid lines */
+    .hero::after {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(201,168,76,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(201,168,76,0.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+    }
+
+    .hero-glow {
+      position: absolute;
+      top: -10%; left: 50%;
+      transform: translateX(-50%);
+      width: 900px; height: 600px;
+      background: radial-gradient(ellipse, rgba(201,168,76,0.09) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-tag {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 2rem;
+      opacity: 0;
+      animation: fadeUp 0.8s 0.2s forwards;
+      display: flex; align-items: center; gap: 0.8rem;
+    }
+    .hero-tag::before {
+      content: '';
+      display: inline-block;
+      width: 32px; height: 1px;
+      background: var(--gold);
+    }
+
+    .hero-title {
+      font-family: var(--serif);
+      font-size: clamp(3.5rem, 8vw, 7.5rem);
+      font-weight: 300;
+      line-height: 1.05;
+      letter-spacing: -0.01em;
+      max-width: 900px;
+      opacity: 0;
+      animation: fadeUp 0.9s 0.4s forwards;
+    }
+    .hero-title em {
+      font-style: italic;
+      color: var(--gold);
+    }
+    .hero-title strong {
+      font-weight: 600;
+    }
+
+    .hero-sub {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 540px;
+      line-height: 1.7;
+      margin-top: 2rem;
+      font-weight: 300;
+      opacity: 0;
+      animation: fadeUp 0.9s 0.6s forwards;
+    }
+
+    .hero-cta {
+      display: flex; align-items: center; gap: 1.5rem;
+      margin-top: 3rem;
+      opacity: 0;
+      animation: fadeUp 0.9s 0.8s forwards;
+    }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 0.6rem;
+      background: var(--gold);
+      color: var(--bg);
+      font-family: var(--sans);
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 1rem 2.2rem;
+      text-decoration: none;
+      border-radius: 2px;
+      transition: all 0.25s ease;
+      border: 1px solid var(--gold);
+    }
+    .btn-primary:hover {
+      background: transparent;
+      color: var(--gold);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(201,168,76,0.2);
+    }
+    .btn-primary svg { transition: transform 0.2s; }
+    .btn-primary:hover svg { transform: translateX(4px); }
+
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .btn-ghost:hover { color: var(--text); }
+
+    .hero-stats {
+      display: flex; gap: 3rem;
+      margin-top: 5rem;
+      padding-top: 3rem;
+      border-top: 1px solid var(--border);
+      opacity: 0;
+      animation: fadeUp 0.9s 1s forwards;
+    }
+    .stat-num {
+      font-family: var(--serif);
+      font-size: 2.5rem;
+      font-weight: 300;
+      color: var(--gold);
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 0.4rem;
+    }
+
+    /* FLOATING RESUME PREVIEW */
+    .hero-visual {
+      position: absolute;
+      right: 3rem; top: 50%;
+      transform: translateY(-50%);
+      width: 360px;
+      opacity: 0;
+      animation: slideIn 1s 0.8s forwards;
+    }
+    @media (max-width: 1100px) { .hero-visual { display: none; } }
+
+    .resume-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2rem;
+      position: relative;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px var(--border);
+    }
+    .resume-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--gold), transparent);
+    }
+    .resume-line {
+      height: 8px;
+      background: var(--bg3);
+      border-radius: 2px;
+      margin-bottom: 0.7rem;
+    }
+    .resume-line.short { width: 40%; }
+    .resume-line.medium { width: 65%; }
+    .resume-line.long { width: 85%; }
+    .resume-line.full { width: 100%; }
+    .resume-line.gold { background: var(--gold-dim); border: 1px solid var(--border); }
+    .resume-section-gap { margin-bottom: 1.5rem; }
+    .resume-name {
+      font-family: var(--serif);
+      font-size: 1.3rem;
+      color: var(--gold);
+      margin-bottom: 0.3rem;
+    }
+    .resume-role {
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+    .resume-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(201,168,76,0.1);
+      border: 1px solid var(--border);
+      padding: 0.25rem 0.7rem;
+      border-radius: 20px;
+      font-size: 0.65rem;
+      color: var(--gold);
+      letter-spacing: 0.08em;
+      margin-bottom: 1.2rem;
+    }
+    .match-score {
+      position: absolute;
+      top: -14px; right: 20px;
+      background: var(--gold);
+      color: var(--bg);
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 500;
+      padding: 0.2rem 0.7rem;
+      border-radius: 20px;
+    }
+
+    /* HOW IT WORKS */
+    .section {
+      padding: 8rem 3rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .section-tag {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 1rem;
+      display: flex; align-items: center; gap: 0.8rem;
+    }
+    .section-tag::before {
+      content: '';
+      width: 24px; height: 1px;
+      background: var(--gold);
+    }
+    .section-title {
+      font-family: var(--serif);
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      font-weight: 300;
+      line-height: 1.1;
+      margin-bottom: 1rem;
+    }
+    .section-title em { font-style: italic; color: var(--gold); }
+    .section-sub {
+      color: var(--text-muted);
+      font-size: 1rem;
+      line-height: 1.7;
+      max-width: 500px;
+    }
+
+    /* STEPS */
+    .steps {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 2px;
+      margin-top: 4rem;
+      border: 1px solid var(--border);
+    }
+    @media (max-width: 800px) {
+      .steps { grid-template-columns: 1fr; }
+    }
+    .step {
+      padding: 2.5rem;
+      background: var(--bg2);
+      position: relative;
+      transition: background 0.3s;
+    }
+    .step:hover { background: var(--bg3); }
+    .step:not(:last-child) { border-right: 1px solid var(--border); }
+    .step-num {
+      font-family: var(--serif);
+      font-size: 4rem;
+      font-weight: 300;
+      color: var(--text-dim);
+      line-height: 1;
+      margin-bottom: 1.5rem;
+    }
+    .step-icon {
+      width: 44px; height: 44px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1.5rem;
+      color: var(--gold);
+      background: var(--gold-dim);
+    }
+    .step-title {
+      font-family: var(--serif);
+      font-size: 1.4rem;
+      font-weight: 400;
+      margin-bottom: 0.8rem;
+    }
+    .step-desc {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.7;
+    }
+
+    /* FEATURES */
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 4rem;
+    }
+    @media (max-width: 900px) {
+      .features-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .features-grid { grid-template-columns: 1fr; }
+    }
+    .feature-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2.2rem;
+      transition: border-color 0.3s, transform 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::after {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .feature-card:hover {
+      border-color: rgba(201,168,76,0.35);
+      transform: translateY(-3px);
+    }
+    .feature-card:hover::after { opacity: 1; }
+    .feature-card.large {
+      grid-column: span 3;
+    }
+    @media (max-width: 900px) {
+      .feature-card.large { grid-column: span 2; }
+    }
+    @media (max-width: 600px) {
+      .feature-card.large { grid-column: span 1; }
+    }
+    .feature-icon {
+      width: 40px; height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--gold);
+      background: var(--gold-dim);
+      margin-bottom: 1.3rem;
+    }
+    .feature-title {
+      font-family: var(--serif);
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+    .feature-desc {
+      color: var(--text-muted);
+      font-size: 0.87rem;
+      line-height: 1.7;
+    }
+
+    /* TESTIMONIALS */
+    .testimonials {
+      padding: 8rem 3rem;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .testimonials-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .testimonials-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 4rem;
+    }
+    @media (max-width: 900px) {
+      .testimonials-grid { grid-template-columns: 1fr; }
+    }
+    .testimonial {
+      padding: 2rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+    }
+    .testimonial-stars {
+      color: var(--gold);
+      font-size: 0.75rem;
+      letter-spacing: 3px;
+      margin-bottom: 1.2rem;
+    }
+    .testimonial-text {
+      font-family: var(--serif);
+      font-size: 1.1rem;
+      font-style: italic;
+      font-weight: 300;
+      color: var(--text);
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+    .testimonial-author {
+      display: flex; align-items: center; gap: 0.8rem;
+    }
+    .author-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--gold-dim);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--serif);
+      font-size: 0.9rem;
+      color: var(--gold);
+    }
+    .author-name {
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+    .author-role {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    /* CTA SECTION */
+    .cta-section {
+      padding: 10rem 3rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-section::before {
+      content: '';
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px; height: 400px;
+      background: radial-gradient(ellipse, rgba(201,168,76,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cta-title {
+      font-family: var(--serif);
+      font-size: clamp(3rem, 6vw, 5.5rem);
+      font-weight: 300;
+      line-height: 1.1;
+      max-width: 700px;
+      margin: 0 auto 1.5rem;
+    }
+    .cta-title em { font-style: italic; color: var(--gold); }
+    .cta-sub {
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 440px;
+      margin: 0 auto 3rem;
+      line-height: 1.7;
+    }
+    .cta-buttons {
+      display: flex; justify-content: center; gap: 1.2rem; flex-wrap: wrap;
+    }
+
+    /* FOOTER */
+    footer {
+      padding: 3rem;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem;
+    }
+    .footer-logo {
+      font-family: var(--serif);
+      font-size: 1.2rem;
+      color: var(--text);
+    }
+    .footer-logo span { color: var(--gold); }
+    .footer-copy {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    /* DIVIDER */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 0 3rem;
+    }
+
+    /* MARQUEE */
+    .marquee-section {
+      overflow: hidden;
+      padding: 2rem 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .marquee-track {
+      display: flex; gap: 4rem;
+      animation: marquee 25s linear infinite;
+      white-space: nowrap;
+    }
+    .marquee-item {
+      font-family: var(--serif);
+      font-size: 1rem;
+      font-style: italic;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+    }
+    .marquee-item span { color: var(--gold); margin: 0 1rem; }
+
+    /* ANIMATIONS */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-40%) translateX(30px); }
+      to { opacity: 1; transform: translateY(-50%) translateX(0); }
+    }
+    @keyframes marquee {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+    @keyframes pulse-border {
+      0%, 100% { border-color: var(--border); }
+      50% { border-color: rgba(201,168,76,0.4); }
+    }
+
+    /* SCROLL REVEAL */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── BEFORE/AFTER COMPARISON ── */
+    .compare-tab {
+      background: transparent;
+      border: 1px solid rgba(201,168,76,0.22);
+      border-radius: 20px;
+      color: #9a958f;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.45rem 1.1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .compare-tab:hover { border-color: #c9a84c; color: #c9a84c; }
+    .compare-tab.active {
+      background: #c9a84c;
+      border-color: #c9a84c;
+      color: #0b0c0f;
+      font-weight: 600;
+    }
+    .compare-panel { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    .compare-grid {
+      display: flex;
+      gap: 0;
+      align-items: stretch;
+      background: #111318;
+      border: 1px solid rgba(201,168,76,0.18);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .compare-col {
+      flex: 1;
+      padding: 1.8rem 2rem;
+    }
+    .compare-col.before { border-right: 1px solid rgba(201,168,76,0.12); }
+    .compare-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 1.1rem;
+    }
+    .compare-col.before .compare-label { color: #6a6560; }
+    .compare-col.after  .compare-label { color: #c9a84c; }
+    .compare-list {
+      list-style: none;
+      padding: 0; margin: 0;
+      display: flex; flex-direction: column; gap: 0.8rem;
+    }
+    .compare-list li {
+      font-size: 0.88rem;
+      line-height: 1.65;
+      padding-left: 1rem;
+      position: relative;
+    }
+    .compare-col.before .compare-list li { color: #6a6560; }
+    .compare-col.before .compare-list li::before { content:'—'; position:absolute; left:0; color:#4a4845; }
+    .compare-col.after  .compare-list li { color: #f0ede6; }
+    .compare-col.after  .compare-list li::before { content:'✦'; position:absolute; left:0; color:#c9a84c; font-size:0.55rem; top:0.3rem; }
+    .compare-col.after  .compare-list li strong { color: #e8c87a; font-weight: 500; }
+    .compare-text {
+      font-size: 0.9rem;
+      line-height: 1.8;
+      margin: 0;
+    }
+    .compare-col.before .compare-text { color: #6a6560; }
+    .compare-col.after  .compare-text { color: #f0ede6; }
+    .compare-col.after  .compare-text strong { color: #e8c87a; font-weight: 500; }
+    .compare-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 0.8rem;
+      background: rgba(201,168,76,0.04);
+    }
+    .compare-arrow {
+      font-size: 1.2rem;
+      color: rgba(201,168,76,0.4);
+    }
+    .gap-have li   { color: #68d391 !important; }
+    .gap-have li::before   { content:'✓' !important; color:#68d391 !important; font-size:0.75rem !important; top:0.1rem !important; }
+    .gap-missing li { color: #fc8181 !important; }
+    .gap-missing li::before { content:'✗' !important; color:#fc8181 !important; font-size:0.75rem !important; top:0.1rem !important; }
+    @media (max-width: 640px) {
+      .compare-grid { flex-direction: column; }
+      .compare-col.before { border-right: none; border-bottom: 1px solid rgba(201,168,76,0.12); }
+      .compare-divider { padding: 0.6rem; }
+      .compare-arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav id="nav">
+    <a class="nav-logo" href="#"><span>Resume</span>Forge</a>
+    <ul class="nav-links">
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#testimonials">Reviews</a></li>
+      <li><a href="#app" class="btn-nav">Launch App &#8594;</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-glow"></div>
+
+    <div class="hero-tag">AI-Powered Resume Builder</div>
+
+    <h1 class="hero-title">
+      Your resume,<br/>
+      <em>crafted for</em><br/>
+      <strong>the job.</strong>
+    </h1>
+
+    <p class="hero-sub">
+      Paste a job description, upload your experience — and watch as our AI sculpts a resume precisely tuned to land you the interview.
+    </p>
+
+    <div class="hero-cta">
+      <a href="#app" class="btn-primary">
+        Build My Resume
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+      <a href="#how" class="btn-ghost">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><path d="M10 15l5-3-5-3v6z" fill="currentColor"/>
+        </svg>
+        See how it works
+      </a>
+    </div>
+
+    <div class="hero-stats">
+      <div>
+        <div class="stat-num">3×</div>
+        <div class="stat-label">Higher callback rate</div>
+      </div>
+      <div>
+        <div class="stat-num">90s</div>
+        <div class="stat-label">To your first draft</div>
+      </div>
+      <div>
+        <div class="stat-num">100%</div>
+        <div class="stat-label">Job-specific tailoring</div>
+      </div>
+    </div>
+
+    <!-- Floating Resume Preview -->
+    <div class="hero-visual">
+      <div class="resume-card">
+        <div class="match-score">✦ 94% Match</div>
+        <div class="resume-name">Alexandra Chen</div>
+        <div class="resume-role">Senior Product Designer · San Francisco</div>
+        <div class="resume-badge">✦ Tailored for: UX Lead @ Figma</div>
+        <div class="resume-section-gap">
+          <div class="resume-line short gold"></div>
+          <div class="resume-line long"></div>
+          <div class="resume-line full"></div>
+          <div class="resume-line medium"></div>
+        </div>
+        <div class="resume-section-gap">
+          <div class="resume-line short gold"></div>
+          <div class="resume-line full"></div>
+          <div class="resume-line long"></div>
+          <div class="resume-line medium"></div>
+          <div class="resume-line full"></div>
+        </div>
+        <div>
+          <div class="resume-line short gold"></div>
+          <div class="resume-line medium"></div>
+          <div class="resume-line long"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MARQUEE -->
+  <div class="marquee-section">
+    <div class="marquee-track">
+      <span class="marquee-item">Tailored to every job posting <span>✦</span></span>
+      <span class="marquee-item">Keyword-optimized for ATS systems <span>✦</span></span>
+      <span class="marquee-item">Highlight what matters most <span>✦</span></span>
+      <span class="marquee-item">Powered by Claude AI <span>✦</span></span>
+      <span class="marquee-item">From draft to interview-ready in minutes <span>✦</span></span>
+      <span class="marquee-item">Tailored to every job posting <span>✦</span></span>
+      <span class="marquee-item">Keyword-optimized for ATS systems <span>✦</span></span>
+      <span class="marquee-item">Highlight what matters most <span>✦</span></span>
+      <span class="marquee-item">Powered by Claude AI <span>✦</span></span>
+      <span class="marquee-item">From draft to interview-ready in minutes <span>✦</span></span>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <section class="section" id="how">
+    <div class="reveal">
+      <div class="section-tag">Process</div>
+      <h2 class="section-title">Three steps to your <em>perfect</em> resume</h2>
+      <p class="section-sub">No guesswork. No generic templates. Just a resume that speaks directly to the role you want.</p>
+    </div>
+    <div class="steps reveal">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+          </svg>
+        </div>
+        <div class="step-title">Paste the Job</div>
+        <div class="step-desc">Copy and paste the job description from any listing — LinkedIn, company sites, job boards. Every detail matters.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+        </div>
+        <div class="step-title">Share Your Story</div>
+        <div class="step-desc">Upload your existing resume or enter your experience. Our AI understands context, not just keywords.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+        </div>
+        <div class="step-title">Get Your Match</div>
+        <div class="step-desc">Receive a polished, job-specific resume in under 90 seconds — ready to copy, download, and send.</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- FEATURES -->
+  <section class="section" id="features">
+    <div class="reveal">
+      <div class="section-tag">Features</div>
+      <h2 class="section-title">Built to get you <em>noticed</em></h2>
+    </div>
+    <div class="features-grid reveal">
+
+      <!-- Large card: Deep Job Analysis -->
+      <div class="feature-card large">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+          </svg>
+        </div>
+        <div class="feature-title">Deep Job Analysis</div>
+        <div class="feature-desc">We don't just match keywords. Our AI reads between the lines — understanding required skills, company culture signals, seniority expectations, and the specific language hiring managers look for in your field.</div>
+      </div>
+
+      <!-- ATS Optimization -->
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z"/>
+          </svg>
+        </div>
+        <div class="feature-title">ATS Keyword Optimization</div>
+        <div class="feature-desc">Every resume is structured to pass Applicant Tracking Systems — ensuring you reach human eyes, not a reject filter. Keywords are woven in naturally, never stuffed.</div>
+      </div>
+
+      <!-- Impact Bullet Rewriting -->
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+          </svg>
+        </div>
+        <div class="feature-title">Impact Bullet Rewriting</div>
+        <div class="feature-desc">Transforms vague responsibilities into results-driven statements. "Managed a team" becomes "Led a 6-person team that delivered a 30% efficiency gain." Every line earns its place.</div>
+      </div>
+
+      <!-- Professional Summary Rewrite -->
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM12 14a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7z"/>
+          </svg>
+        </div>
+        <div class="feature-title">Professional Summary Rewrite</div>
+        <div class="feature-desc">A 3–4 sentence opening that bridges your experience directly to the role. Written to match the seniority level and vocabulary a hiring manager expects — not a generic template.</div>
+      </div>
+
+      <!-- Skills Gap Analysis -->
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9 2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="feature-title">Skills Gap Analysis</div>
+        <div class="feature-desc">Compares your resume against the job description line by line — surfacing exactly which hard and soft skills are missing so you know precisely what to address before applying.</div>
+      </div>
+
+      <!-- Speed card -->
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div class="feature-title">90-Second Turnaround</div>
+        <div class="feature-desc">Job applications move fast. So do we. Go from job posting to a polished, tailored resume in under two minutes — plus a cover letter included automatically on ATS runs.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- BEFORE / AFTER COMPARISON -->
+  <section class="section" id="compare" style="padding-top:0;">
+    <div class="reveal" style="text-align:center; margin-bottom:2.5rem;">
+      <div class="section-tag">See the difference</div>
+      <h2 class="section-title">Before <em>vs</em> After ResumeForge</h2>
+      <p style="font-family:'DM Sans',sans-serif; font-size:0.95rem; color:#9a958f; font-weight:300; max-width:520px; margin:0.8rem auto 0; line-height:1.75;">
+        Click any tab to see how each tool transforms a real resume section.
+      </p>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="reveal" style="display:flex; justify-content:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:2rem;">
+      <button onclick="switchTab('bullets')"   id="tab-bullets"   class="compare-tab active">Impact Bullets</button>
+      <button onclick="switchTab('summary')"   id="tab-summary"   class="compare-tab">Summary Rewrite</button>
+      <button onclick="switchTab('ats')"       id="tab-ats"       class="compare-tab">ATS Keywords</button>
+      <button onclick="switchTab('gap')"       id="tab-gap"       class="compare-tab">Skills Gap</button>
+    </div>
+
+    <!-- Panels -->
+    <div class="reveal">
+
+      <!-- BULLETS panel -->
+      <div id="panel-bullets" class="compare-panel">
+        <div class="compare-grid">
+          <div class="compare-col before">
+            <div class="compare-label">Before</div>
+            <ul class="compare-list">
+              <li>Responsible for managing a team of developers</li>
+              <li>Worked on improving the company website</li>
+              <li>Helped with customer support tickets</li>
+              <li>Assisted in product launches</li>
+            </ul>
+          </div>
+          <div class="compare-divider">
+            <div class="compare-arrow">&#8594;</div>
+          </div>
+          <div class="compare-col after">
+            <div class="compare-label">After</div>
+            <ul class="compare-list">
+              <li>Led a <strong>6-person engineering team</strong>, shipping 4 features that reduced churn by <strong>18%</strong></li>
+              <li>Rebuilt core landing pages, lifting conversion rate by <strong>31%</strong> in 60 days</li>
+              <li>Resolved <strong>200+ monthly support tickets</strong> with a 97% satisfaction score</li>
+              <li>Co-led 3 product launches reaching <strong>50,000+ users</strong> within launch week</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUMMARY panel -->
+      <div id="panel-summary" class="compare-panel" style="display:none;">
+        <div class="compare-grid">
+          <div class="compare-col before">
+            <div class="compare-label">Before</div>
+            <p class="compare-text">Experienced software engineer with skills in various programming languages. Looking for a challenging position where I can use my skills to contribute to a team. I am a hard worker who is passionate about technology.</p>
+          </div>
+          <div class="compare-divider">
+            <div class="compare-arrow">&#8594;</div>
+          </div>
+          <div class="compare-col after">
+            <div class="compare-label">After</div>
+            <p class="compare-text">Full-stack engineer with <strong>6 years</strong> building scalable SaaS products in React and Node.js. Proven track record of shipping features that drive measurable business outcomes — most recently reducing API latency by <strong>40%</strong> for a platform serving 200K users. Seeking a senior IC role where technical depth and product thinking intersect.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ATS panel -->
+      <div id="panel-ats" class="compare-panel" style="display:none;">
+        <div class="compare-grid">
+          <div class="compare-col before">
+            <div class="compare-label">Before — Missing Keywords</div>
+            <ul class="compare-list">
+              <li>Built internal tools for the ops team</li>
+              <li>Worked with databases to store user info</li>
+              <li>Set up automated tests for the codebase</li>
+              <li>Helped deploy updates to production</li>
+            </ul>
+          </div>
+          <div class="compare-divider">
+            <div class="compare-arrow">&#8594;</div>
+          </div>
+          <div class="compare-col after">
+            <div class="compare-label">After — ATS Optimized</div>
+            <ul class="compare-list">
+              <li>Developed <strong>internal tooling</strong> using <strong>Python &amp; REST APIs</strong>, reducing ops overhead by 25%</li>
+              <li>Designed and maintained <strong>PostgreSQL</strong> schemas supporting <strong>10M+ records</strong></li>
+              <li>Implemented <strong>CI/CD pipelines</strong> with <strong>Jest &amp; GitHub Actions</strong>, cutting QA time by 40%</li>
+              <li>Managed <strong>zero-downtime deployments</strong> via <strong>Docker &amp; AWS ECS</strong></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- GAP panel -->
+      <div id="panel-gap" class="compare-panel" style="display:none;">
+        <div class="compare-grid">
+          <div class="compare-col before" style="flex:1;">
+            <div class="compare-label">Your Resume Has</div>
+            <ul class="compare-list gap-have">
+              <li>&#10003; &nbsp;JavaScript / React</li>
+              <li>&#10003; &nbsp;REST API development</li>
+              <li>&#10003; &nbsp;Agile / Scrum</li>
+              <li>&#10003; &nbsp;SQL &amp; PostgreSQL</li>
+              <li>&#10003; &nbsp;Git &amp; version control</li>
+            </ul>
+          </div>
+          <div class="compare-divider">
+            <div class="compare-arrow">&#8597;</div>
+          </div>
+          <div class="compare-col after" style="flex:1;">
+            <div class="compare-label">Job Requires — You're Missing</div>
+            <ul class="compare-list gap-missing">
+              <li>&#10005; &nbsp;TypeScript (required)</li>
+              <li>&#10005; &nbsp;GraphQL (preferred)</li>
+              <li>&#10005; &nbsp;AWS / Cloud deployment</li>
+              <li>&#10005; &nbsp;System design experience</li>
+              <li>&#10005; &nbsp;Mentorship / tech lead experience</li>
+            </ul>
+          </div>
+        </div>
+        <div style="margin-top:1.2rem; padding:1rem 1.2rem; background:rgba(201,168,76,0.06); border-left:2px solid rgba(201,168,76,0.4); border-radius:0 4px 4px 0;">
+          <span style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.14em; text-transform:uppercase; color:#c9a84c;">&#10022; Tip</span>
+          <p style="font-size:0.82rem; color:#9a958f; margin:0.3rem 0 0; line-height:1.7;">Add a short TypeScript project to your GitHub before applying. Even a small contribution removes the biggest blocker on this list.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CTA under comparison -->
+    <div class="reveal" style="text-align:center; margin-top:2.5rem;">
+      <a href="#app" class="btn-primary">
+        Try it on my own resume
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <div class="testimonials" id="testimonials">
+    <div class="testimonials-inner">
+      <div class="reveal">
+        <div class="section-tag">Testimonials</div>
+        <h2 class="section-title">Careers that <em>transformed</em></h2>
+      </div>
+      <div class="testimonials-grid reveal">
+        <div class="testimonial">
+          <div class="testimonial-stars">★★★★★</div>
+          <div class="testimonial-text">"I was applying to 20 jobs a week and getting silence. After using ResumeForge, I landed three interviews in my first week."</div>
+          <div class="testimonial-author">
+            <div class="author-avatar">MK</div>
+            <div>
+              <div class="author-name">Marcus K.</div>
+              <div class="author-role">Software Engineer · Now at Stripe</div>
+            </div>
+          </div>
+        </div>
+        <div class="testimonial">
+          <div class="testimonial-stars">★★★★★</div>
+          <div class="testimonial-text">"The AI understood the job posting better than I did. It surfaced experiences I didn't even think to include. Absolutely brilliant."</div>
+          <div class="testimonial-author">
+            <div class="author-avatar">SL</div>
+            <div>
+              <div class="author-name">Sarah L.</div>
+              <div class="author-role">Product Manager · Now at Notion</div>
+            </div>
+          </div>
+        </div>
+        <div class="testimonial">
+          <div class="testimonial-stars">★★★★★</div>
+          <div class="testimonial-text">"Switching careers felt impossible. This tool helped me connect my old experience to my new direction in a way I couldn't articulate myself."</div>
+          <div class="testimonial-author">
+            <div class="author-avatar">JR</div>
+            <div>
+              <div class="author-name">James R.</div>
+              <div class="author-role">Data Analyst · Career switcher</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMBEDDED APP -->
+  <section id="app" style="padding:5rem 0 0; background:#0b0c0f;">
+    <div style="max-width:1100px; margin:0 auto; padding:0 2rem;">
+      <div class="reveal" style="text-align:center; margin-bottom:2.5rem;">
+        <div style="font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:0.22em;
+                    text-transform:uppercase; color:#c9a84c; margin-bottom:0.8rem;">
+          &#10022; Try It Now &mdash; No Sign Up Required
+        </div>
+        <h2 style="font-family:'Cormorant Garamond',serif; font-size:clamp(2rem,4vw,3rem);
+                   font-weight:300; color:#f0ede6; margin-bottom:0.6rem;">
+          Use <em style="color:#c9a84c; font-style:italic;">ResumeForge</em> right here
+        </h2>
+        <p style="font-family:'DM Sans',sans-serif; font-size:0.95rem; color:#9a958f;
+                  font-weight:300; max-width:480px; margin:0 auto; line-height:1.75;">
+          Paste a job description, upload your resume, and get AI-tailored results in seconds.
+        </p>
+      </div>
+    </div>
+    <!-- Full-bleed iframe — no max-width wrapper -->
+    <div class="reveal" style="margin:0; border-top:1px solid rgba(201,168,76,0.15);
+                                border-bottom:1px solid rgba(201,168,76,0.15);
+                                box-shadow:0 0 80px rgba(201,168,76,0.07);
+                                height:1100px; position:relative; overflow:hidden;">
+      <iframe
+        src="https://yeoresumebuilder.streamlit.app/?embed=true"
+        style="width:100%; height:1160px; border:none; display:block; margin-top:0;"
+        allow="clipboard-write">
+      </iframe>
+      <div style="position:absolute; bottom:0; left:0; right:0; height:62px;
+                  background:#0b0c0f; z-index:10;"></div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="reveal">
+      <h2 class="cta-title">Ready to land the <em>job you want?</em></h2>
+      <p class="cta-sub">Your next opportunity is waiting. Give it a resume that's impossible to ignore.</p>
+      <div class="cta-buttons">
+        <a href="#app" class="btn-primary">
+          Build My Resume &mdash; It's Free
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo"><span>Resume</span>Forge</div>
+    <div class="footer-copy">© 2026 ResumeForge. Built to get you hired.</div>
+  </footer>
+
+  <script>
+    // Sticky nav
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 40);
+    });
+
+    // Scroll reveal
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          observer.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Resume card pulse animation
+    const resumeLines = document.querySelectorAll('.resume-line');
+    setInterval(() => {
+      const randomLine = resumeLines[Math.floor(Math.random() * resumeLines.length)];
+      randomLine.style.opacity = '0.4';
+      setTimeout(() => { randomLine.style.opacity = '1'; }, 500);
+    }, 1200);
+
+    // Before/After comparison tab switcher
+    function switchTab(name) {
+      ['bullets','summary','ats','gap'].forEach(t => {
+        document.getElementById('panel-' + t).style.display = (t === name) ? 'block' : 'none';
+        const tab = document.getElementById('tab-' + t);
+        tab.classList.toggle('active', t === name);
+      });
+    }
+  </script>
+</body>
+</html>
