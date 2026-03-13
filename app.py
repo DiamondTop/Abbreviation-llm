@@ -85,7 +85,6 @@ h1, h2, h3, h4 { font-family: var(--serif) !important; font-weight: 300 !importa
 }
 .stTextArea textarea::placeholder { color: var(--placeholder) !important; opacity: 1 !important; }
 
-/* ── text_input styling (job title field) ── */
 .stTextInput > div > div > input {
     background: var(--bg2) !important;
     border: 1px solid rgba(201,168,76,0.18) !important;
@@ -225,15 +224,18 @@ hr { border: none !important; border-top: 1px solid var(--border) !important; ma
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+/* ── HIDE STREAMLIT BRANDING ── */
+footer                         { display: none !important; }
+#MainMenu                      { display: none !important; }
+[data-testid="stStatusWidget"] { display: none !important; }
+[data-testid="stDecoration"]   { display: none !important; }
+.viewerBadge_container__r5tak  { display: none !important; }
+.viewerBadge_link__qRIco       { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
 
-footer { display: none !important; }
-#MainMenu { display: none !important; }
-[data-testid="stStatusWidget"]  { display: none !important; }
-[data-testid="stDecoration"]    { display: none !important; }
-.viewerBadge_container__r5tak  { display: none !important; }
 # ══════════════════════════════════════════════════════
 # ANALYTICS — Supabase helpers
 # ══════════════════════════════════════════════════════
@@ -250,10 +252,10 @@ EV_GAP   = "goal_gap"
 EV_COVER = "cover_letter_generated"
 
 GOAL_EVENTS = {
-    "✦  ATS Keyword Optimization":          EV_ATS,
-    "✦  Rewrite Bullets with Impact":       EV_STAR,
-    "✦  Professional Summary Rewrite":      EV_SUMM,
-    "✦  Skills Gap Analysis":               EV_GAP,
+    "✦  ATS Keyword Optimization":     EV_ATS,
+    "✦  Rewrite Bullets with Impact":  EV_STAR,
+    "✦  Professional Summary Rewrite": EV_SUMM,
+    "✦  Skills Gap Analysis":          EV_GAP,
 }
 
 
@@ -333,20 +335,20 @@ with st.sidebar:
         <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.18em;
                     text-transform:uppercase; color:#c9a84c; margin-bottom:0.8rem;">How it works</div>
         <div style="font-size:0.8rem; color:#9a958f; line-height:1.8;">
-            <div style="margin-bottom:0.4rem;">① Upload your resume</div>
-            <div style="margin-bottom:0.4rem;">② Paste the job description</div>
-            <div style="margin-bottom:0.4rem;">③ Choose your goal</div>
-            <div style="margin-bottom:0.4rem;">④ Add target job title <em style="color:#c9a84c;">(sharpens AI output)</em></div>
-            <div>⑤ Run analysis → download</div>
+            <div style="margin-bottom:0.4rem;">&#9312; Upload your resume</div>
+            <div style="margin-bottom:0.4rem;">&#9313; Paste the job description</div>
+            <div style="margin-bottom:0.4rem;">&#9314; Choose your goal</div>
+            <div style="margin-bottom:0.4rem;">&#9315; Add target job title <em style="color:#c9a84c;">(sharpens AI output)</em></div>
+            <div>&#9316; Run analysis &#8594; download</div>
         </div>
     </div>
     <div style="margin-top:1.2rem; padding:1rem; background:rgba(201,168,76,0.06);
                 border:1px solid rgba(201,168,76,0.15); border-radius:4px;">
         <div style="font-size:0.78rem; color:#9a958f; line-height:1.8;">
-            <span style="color:#c9a84c;">✦</span> Your files are never stored on this website.<br/>
-            <span style="color:#c9a84c;">✦</span> Analysis runs in real-time.<br/>
-            <span style="color:#c9a84c;">✦</span> Cover letter auto-generated on ATS runs.<br/>
-            <span style="color:#c9a84c;">✦</span> Download your edits instantly.
+            <span style="color:#c9a84c;">&#10022;</span> Your files are never stored on this website.<br/>
+            <span style="color:#c9a84c;">&#10022;</span> Analysis runs in real-time.<br/>
+            <span style="color:#c9a84c;">&#10022;</span> Cover letter auto-generated on ATS runs.<br/>
+            <span style="color:#c9a84c;">&#10022;</span> Download your edits instantly.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -365,7 +367,7 @@ with st.sidebar:
         def pct(n): return round(n / total_goals * 100)
 
         st.markdown(
-            "<div style='margin-top:1.6rem; border-radius:6px 6px 0 0; overflow:hidden;"
+            "<div style='margin-top:1.6rem; border-radius:6px 6px 0 0;"
             "border:1px solid rgba(201,168,76,0.25); border-bottom:none;"
             "background:linear-gradient(135deg,#1a160a 0%,#0f1118 100%);"
             "padding:0.8rem 1.1rem; display:flex; align-items:center; gap:0.55rem;'>"
@@ -376,6 +378,7 @@ with st.sidebar:
             "font-weight:500;'>Live Analytics</span></div>",
             unsafe_allow_html=True
         )
+
         st.markdown(
             "<div style='border-left:1px solid rgba(201,168,76,0.25);"
             "border-right:1px solid rgba(201,168,76,0.25);"
@@ -398,19 +401,30 @@ with st.sidebar:
             f"<div style='font-family:DM Mono,monospace; font-size:1.2rem; font-weight:500;"
             f"color:#c9a84c; line-height:1.1;'>{cover_count:,}</div>"
             f"<div style='font-size:0.54rem; letter-spacing:0.08em; text-transform:uppercase;"
-            f"color:#6a6560; margin-top:0.15rem;'> Cover Letters</div></div>"
+            f"color:#6a6560; margin-top:0.15rem;'>Letters</div></div>"
             "</div></div>",
             unsafe_allow_html=True
         )
 
+        st.markdown(
+            "<div style='border-left:1px solid rgba(201,168,76,0.25);"
+            "border-right:1px solid rgba(201,168,76,0.25);"
+            "background:#0d0e12; padding:0.6rem 1rem 0.5rem;'>"
+            "<div style='font-family:DM Mono,monospace; font-size:0.57rem; letter-spacing:0.16em;"
+            "text-transform:uppercase; color:#4a4845;"
+            "border-top:1px solid rgba(255,255,255,0.05); padding-top:0.6rem;'>"
+            "Goal Breakdown</div></div>",
+            unsafe_allow_html=True
+        )
+
         goal_items = [
-            ("ATS Keywords",         ats_count,  "#c9a84c", "rgba(201,168,76,0.2)"),
+            ("ATS Keywords",          ats_count,  "#c9a84c", "rgba(201,168,76,0.2)"),
             ("Impact Bullet Rewrite", star_count, "#63b3ed", "rgba(99,179,237,0.2)"),
-            ("Summary Rewrite",      summ_count, "#68d391", "rgba(104,211,145,0.2)"),
-            ("Skills Gap",           gap_count,  "#fc8181", "rgba(252,129,129,0.2)"),
+            ("Summary Rewrite",       summ_count, "#68d391", "rgba(104,211,145,0.2)"),
+            ("Skills Gap",            gap_count,  "#fc8181", "rgba(252,129,129,0.2)"),
         ]
         for i, (name, count, color, grad) in enumerate(goal_items):
-            w   = pct(count)
+            w = pct(count)
             is_last = (i == len(goal_items) - 1)
             bottom_radius = "0 0 6px 6px" if is_last else "0"
             bottom_border = "border-bottom:1px solid rgba(201,168,76,0.25);" if is_last else ""
@@ -446,7 +460,7 @@ with st.sidebar:
 # ==============================
 model_map = {
     "Step-3.5-Flash (StepFun · Recommended)": "stepfun/step-3.5-flash:free",
-    "Nemo via Nvidia":            "nvidia/nemotron-3-super-120b-a12b:free",
+    "Nemo via Nvidia":                         "nvidia/nemotron-3-super-120b-a12b:free",
 }
 
 if "Gemini" not in PROVIDER:
@@ -476,15 +490,9 @@ def extract_text(file):
         return ""
 
 
-# ══════════════════════════════════════════════════════
-# NEW: inject_job_title — appends a focused role directive
-# to any system prompt so language, tone, and keywords
-# are calibrated to the exact position being applied for.
-# ══════════════════════════════════════════════════════
 def inject_job_title(base_task: str, job_title: str) -> str:
     if not job_title.strip():
-        return base_task      # no change if field is empty
-
+        return base_task
     return base_task + f"""
 
 TARGET JOB TITLE: "{job_title.strip()}"
@@ -493,8 +501,7 @@ Use this target job title to sharpen every part of your response:
 - Mirror the exact terminology, seniority level, and industry language a \
 hiring manager recruiting for this specific role would expect to see
 - Prioritise the skills, action verbs, and quantified achievements that carry \
-the most weight for a "{job_title.strip()}" (e.g. a Senior Data Engineer resume \
-should foreground pipeline design and infrastructure ownership — not generic "analysis")
+the most weight for a "{job_title.strip()}"
 - Rewrite any vague language so it reads as if crafted by — and for — a strong \
 candidate actively pursuing this exact title
 - Calibrate tone to seniority: junior/associate titles should project energy and \
@@ -527,23 +534,19 @@ def call_llm(system_task, user_content, add_score=True):
 
 
 def generate_cover_letter(job_desc, resume_text, job_title: str):
-    # Build a role-specific instruction when a title is given
     title_clause  = f" for the **{job_title.strip()}** position" if job_title.strip() else ""
     title_persona = (
-        f"\n- Write from the perspective of a strong {job_title.strip()} candidate — "
-        f"every sentence should reinforce that professional identity through "
-        f"role-appropriate vocabulary, achievements, and tone"
+        f"\n- Write from the perspective of a strong {job_title.strip()} candidate"
         if job_title.strip() else ""
     )
-
     system_task = f"""You are an expert career coach and professional writer.
 Write a compelling, personalized cover letter{title_clause} based on the candidate's \
 resume and the job description provided.
 
 The cover letter must:
-- Be 3–4 paragraphs, professional but warm in tone
+- Be 3-4 paragraphs, professional but warm in tone
 - Open with a strong hook that references the specific role and company
-- Highlight 2–3 of the candidate's most relevant experiences from their resume \
+- Highlight 2-3 of the candidate's most relevant experiences from their resume \
 that directly match the job requirements
 - Include at least one quantified achievement from the resume
 - Close with a confident call to action
@@ -581,7 +584,7 @@ def make_progress_ui(steps: list):
         dots_html = ""
         for si, (sicon, slabel) in enumerate(steps):
             if si < current_i:
-                dot_bg, dot_color, text_color, content = "#28A745", "#0b0c0f", "#28A745", "✓"
+                dot_bg, dot_color, text_color, content = "#28A745", "#0b0c0f", "#28A745", "&#10003;"
             elif si == current_i:
                 dot_bg, dot_color, text_color, content = "#c9a84c", "#0b0c0f", "#f0ede6", sicon
             else:
@@ -646,7 +649,7 @@ st.markdown("""
                     text-transform:uppercase; color:#c9a84c; margin-bottom:0.9rem;
                     display:flex; align-items:center; gap:0.7rem;">
             <span style="display:inline-block; width:26px; height:1px; background:#c9a84c;"></span>
-            AI-Powered · Job-Specific · Interview-Ready
+            AI-Powered &middot; Job-Specific &middot; Interview-Ready
         </div>
         <h1 style="font-family:'Cormorant Garamond',Georgia,serif;
                    font-size:clamp(2.6rem,5.5vw,4.6rem); font-weight:300;
@@ -655,7 +658,7 @@ st.markdown("""
         </h1>
         <p style="font-family:'DM Sans',sans-serif; font-size:0.98rem; color:#9a958f;
                   font-weight:300; max-width:500px; line-height:1.75; margin:0;">
-            Paste a job description, upload your resume — and let AI sculpt
+            Paste a job description, upload your resume &mdash; and let AI sculpt
             a response precisely tuned to land you the interview.
         </p>
     </div>
@@ -669,13 +672,13 @@ st.markdown("<hr/>", unsafe_allow_html=True)
 # ==============================
 st.markdown("""
 <div style="display:flex; gap:1.2rem; align-items:center; margin-bottom:1.6rem; flex-wrap:wrap;">
-    <span style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.16em; text-transform:uppercase; color:#c9a84c;">① Upload Resume</span>
-    <span style="color:rgba(201,168,76,0.2);">────</span>
-    <span style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.16em; text-transform:uppercase; color:#c9a84c;">② Job Description</span>
-    <span style="color:rgba(201,168,76,0.2);">────</span>
-    <span style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.16em; text-transform:uppercase; color:#c9a84c;">③ Choose Goal</span>
-    <span style="color:rgba(201,168,76,0.2);">────</span>
-    <span style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.16em; text-transform:uppercase; color:#c9a84c;">④ Run</span>
+    <span style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.16em; text-transform:uppercase; color:#c9a84c;">&#9312; Upload Resume</span>
+    <span style="color:rgba(201,168,76,0.2);">&#9472;&#9472;&#9472;&#9472;</span>
+    <span style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.16em; text-transform:uppercase; color:#c9a84c;">&#9313; Job Description</span>
+    <span style="color:rgba(201,168,76,0.2);">&#9472;&#9472;&#9472;&#9472;</span>
+    <span style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.16em; text-transform:uppercase; color:#c9a84c;">&#9314; Choose Goal</span>
+    <span style="color:rgba(201,168,76,0.2);">&#9472;&#9472;&#9472;&#9472;</span>
+    <span style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.16em; text-transform:uppercase; color:#c9a84c;">&#9315; Run</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -700,20 +703,19 @@ st.markdown("<hr/>", unsafe_allow_html=True)
 # GOAL + JOB TITLE
 # ==============================
 prompt_options = {
-    "✦  ATS Keyword Optimization":          "Analyze the Job Description for top keywords and modify my resume bullet points to include them naturally.",
-    "✦  Rewrite Bullets with Impact":       "Rewrite my work experience bullet points to highlight measurable achievements and strong action verbs. Turn vague responsibilities into powerful results-driven statements — e.g. 'Managed a team' becomes 'Led a 6-person team that delivered a 30% efficiency gain in Q3'. Focus on outcomes, numbers, and impact.",
-    "✦  Professional Summary Rewrite":      "Draft a compelling 3–4 sentence professional summary that bridges my current experience with this specific job.",
-    "✦  Skills Gap Analysis":               "Compare my resume against the job description. Identify exactly what hard and soft skills I am currently missing.",
+    "✦  ATS Keyword Optimization":     "Analyze the Job Description for top keywords and modify my resume bullet points to include them naturally.",
+    "✦  Rewrite Bullets with Impact":  "Rewrite my work experience bullet points to highlight measurable achievements and strong action verbs. Turn vague responsibilities into powerful results-driven statements. Focus on outcomes, numbers, and impact.",
+    "✦  Professional Summary Rewrite": "Draft a compelling 3-4 sentence professional summary that bridges my current experience with this specific job.",
+    "✦  Skills Gap Analysis":          "Compare my resume against the job description. Identify exactly what hard and soft skills I am currently missing.",
 }
 
 col3, col4 = st.columns([1.2, 1], gap="large")
 with col3:
     selected_strategy = st.selectbox("Choose Your Goal", list(prompt_options.keys()))
 with col4:
-    # ── CHANGED: single-line text_input, job title replaces freeform instructions
     job_title = st.text_input(
         "Target Job Title (Optional)",
-        placeholder="e.g. Senior Data Engineer, Product Manager, UX Designer…",
+        placeholder="e.g. Senior Data Engineer, Product Manager, UX Designer...",
         help="Providing a job title anchors the AI's vocabulary, seniority tone, and keyword priority to that specific role."
     )
 
@@ -725,7 +727,7 @@ if is_ats:
     <div style="display:inline-flex; align-items:center; gap:0.6rem;
                 background:rgba(201,168,76,0.07); border:1px solid rgba(201,168,76,0.2);
                 border-radius:20px; padding:0.35rem 0.9rem; margin-bottom:1rem;">
-        <span style="color:#c9a84c; font-size:0.75rem;">✦</span>
+        <span style="color:#c9a84c; font-size:0.75rem;">&#10022;</span>
         <span style="font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:0.12em;
                      text-transform:uppercase; color:#9a958f;">
             A tailored cover letter will be generated automatically after this analysis
@@ -744,11 +746,10 @@ st.markdown("<hr/>", unsafe_allow_html=True)
 # ==============================
 if run:
     if not resume_file:
-        st.warning("⚠  Please upload a resume to get started.")
+        st.warning("Please upload a resume to get started.")
     elif not job_desc.strip():
-        st.warning("⚠  Please paste a job description to match against.")
+        st.warning("Please paste a job description to match against.")
     else:
-        # ── Inject job title into the system prompt ──────────
         system_task = inject_job_title(prompt_options[selected_strategy], job_title)
 
         track(EV_RUN)
@@ -764,7 +765,7 @@ if run:
             ("📄", "Reading resume"),
             ("🔍", "Parsing job description"),
             ("🤖", "Running AI analysis"),
-            ("✉️",  "Generating cover letter"),
+            ("✉️", "Generating cover letter"),
             ("✅", "Complete"),
         ]
         steps = steps_cover if is_ats else steps_base
@@ -784,7 +785,6 @@ if run:
         cover_letter_text = ""
         if is_ats and result:
             render_progress(3)
-            # ── Pass job_title so the cover letter mirrors role identity ──
             cover_letter_text = generate_cover_letter(job_desc, resume_text, job_title)
             if cover_letter_text:
                 track(EV_COVER)
@@ -806,9 +806,8 @@ if run:
                     else "Needs Work"
                 )
 
-                # Show job title badge next to completion notice if provided
                 title_badge = (
-                    f"&nbsp;·&nbsp;<span style='color:#c9a84c;'>{job_title.strip()}</span>"
+                    f"&nbsp;&middot;&nbsp;<span style='color:#c9a84c;'>{job_title.strip()}</span>"
                     if job_title.strip() else ""
                 )
                 st.markdown(f"""
@@ -816,7 +815,7 @@ if run:
                             border:1px solid rgba(40,167,69,0.28); border-radius:3px;
                             margin-bottom:1.4rem; font-family:'DM Mono',monospace;
                             font-size:0.68rem; letter-spacing:0.14em; text-transform:uppercase; color:#28A745;">
-                    ✓ &nbsp; Analysis complete · {PROVIDER.split('(')[0].strip()}{title_badge}
+                    &#10003; &nbsp; Analysis complete &middot; {PROVIDER.split('(')[0].strip()}{title_badge}
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -828,7 +827,7 @@ if run:
                     <div style="margin-top:1.1rem;">
                         <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.16em;
                                     text-transform:uppercase; color:#9a958f; margin-bottom:0.55rem;">
-                            Resume – Job Alignment
+                            Resume &ndash; Job Alignment
                         </div>
                         <div style="height:7px; background:#1c1f28; border-radius:3px; overflow:hidden;">
                             <div style="height:100%; width:{score_val}%; background:{color}; border-radius:3px;"></div>
@@ -844,7 +843,6 @@ if run:
 
             st.markdown("<hr/>", unsafe_allow_html=True)
 
-            # ── Results heading — show job title pill if provided ──
             title_pill = (
                 f"<span style='display:inline-block; background:rgba(201,168,76,0.1); "
                 f"border:1px solid rgba(201,168,76,0.28); border-radius:20px; "
@@ -919,7 +917,7 @@ if run:
                 <div style="margin-top:1rem; padding:0.9rem 1.2rem; background:rgba(201,168,76,0.05);
                             border-left:2px solid rgba(201,168,76,0.4); border-radius:0 4px 4px 0;">
                     <span style="font-family:'DM Mono',monospace; font-size:0.62rem;
-                                 letter-spacing:0.14em; text-transform:uppercase; color:#c9a84c;">✦ Tip</span>
+                                 letter-spacing:0.14em; text-transform:uppercase; color:#c9a84c;">&#10022; Tip</span>
                     <p style="font-family:'DM Sans',sans-serif; font-size:0.82rem; color:#9a958f;
                               margin:0.3rem 0 0; line-height:1.7;">
                         Personalise the opening line with the hiring manager's name if you can find it on LinkedIn.
