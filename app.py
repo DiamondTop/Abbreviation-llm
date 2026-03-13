@@ -635,6 +635,30 @@ def make_progress_ui(steps: list):
     return render
 
 
+def parse_bullet_pairs(text: str) -> list[dict]:
+    """Parse ---BULLET--- blocks into list of {original, rewritten} dicts."""
+    pairs = []
+    blocks = re.findall(r"---BULLET---\s*(.*?)\s*---END---", text, re.DOTALL)
+    for block in blocks:
+        orig_match = re.search(r"ORIGINAL:\s*(.+?)(?=\nREWRITTEN:)", block, re.DOTALL)
+        new_match  = re.search(r"REWRITTEN:\s*(.+?)$",                block, re.DOTALL)
+        if orig_match and new_match:
+            pairs.append({
+                "original":  orig_match.group(1).strip(),
+                "rewritten": new_match.group(1).strip(),
+            })
+    return pairs
+
+
+def build_updated_resume(original_text: str, pairs: list[dict]) -> str:
+    """Replace original bullets in resume text with rewritten versions."""
+    updated = original_text
+    for p in pairs:
+        if p["original"] in updated:
+            updated = updated.replace(p["original"], p["rewritten"], 1)
+    return updated
+
+
 # ==============================
 # HERO HEADER
 # ==============================
@@ -702,9 +726,24 @@ st.markdown("<hr/>", unsafe_allow_html=True)
 # ==============================
 # GOAL + JOB TITLE
 # ==============================
+BULLET_PROMPT = """Extract every work-experience bullet point from the resume and rewrite each one to highlight measurable achievements and strong action verbs.
+
+CRITICAL — output ONLY in this exact format, one block per bullet, no extra text before or after:
+
+---BULLET---
+ORIGINAL: [paste the exact original bullet point here]
+REWRITTEN: [your improved version here]
+---END---
+
+Rules:
+- Include every bullet point from every job, not just a few
+- Keep ORIGINAL as the exact text from the resume (do not paraphrase it)
+- REWRITTEN should use strong action verbs, quantified outcomes, and results-driven language
+- Do not add any intro text, section headers, commentary, or explanation — only the ---BULLET--- blocks"""
+
 prompt_options = {
     "✦  ATS Keyword Optimization":     "Analyze the Job Description for top keywords and modify my resume bullet points to include them naturally.",
-    "✦  Rewrite Bullets with Impact":  "Rewrite my work experience bullet points to highlight measurable achievements and strong action verbs. Turn vague responsibilities into powerful results-driven statements. Focus on outcomes, numbers, and impact.",
+    "✦  Rewrite Bullets with Impact":  BULLET_PROMPT,
     "✦  Professional Summary Rewrite": "Draft a compelling 3-4 sentence professional summary that bridges my current experience with this specific job.",
     "✦  Skills Gap Analysis":          "Compare my resume against the job description. Identify exactly what hard and soft skills I am currently missing.",
 }
@@ -721,7 +760,8 @@ with col4:
 
 st.markdown("<br/>", unsafe_allow_html=True)
 
-is_ats = "ATS" in selected_strategy
+is_ats     = "ATS"     in selected_strategy
+is_bullets = "Bullets" in selected_strategy
 if is_ats:
     st.markdown("""
     <div style="display:inline-flex; align-items:center; gap:0.6rem;
@@ -866,15 +906,139 @@ if run:
             </div>
             """, unsafe_allow_html=True)
 
-            st.markdown(display_text)
-            st.markdown("<br/>", unsafe_allow_html=True)
+            # ── BULLET COMPARISON UI ──────────────────────────────────────
+            if is_bullets:
+                bullet_pairs = parse_bullet_pairs(display_text)
 
-            dcol1, _ = st.columns([1, 4])
-            with dcol1:
-                st.download_button(
-                    "↓  Download Analysis", data=display_text,
-                    file_name="resume_analysis.txt", mime="text/plain"
-                )
+                if bullet_pairs:
+                    st.markdown(f"""
+                    <div style="margin-bottom:1.4rem;">
+                        <div style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em;
+                                    text-transform:uppercase; color:#c9a84c; margin-bottom:0.35rem;
+                                    display:flex; align-items:center; gap:0.6rem;">
+                            <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>Results
+                        </div>
+                        <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
+                                    font-weight:300; color:#f0ede6; margin-bottom:0.3rem;">
+                            Impact Bullet Rewriting{title_pill}
+                        </div>
+                        <p style="font-size:0.85rem; color:#9a958f; font-weight:300; margin:0; line-height:1.7;">
+                            {len(bullet_pairs)} bullet{"s" if len(bullet_pairs) != 1 else ""} rewritten.
+                            Review each change, then apply and download your updated resume.
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # Column headers
+                    h1, h2 = st.columns(2, gap="large")
+                    with h1:
+                        st.markdown("""
+                        <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.16em;
+                                    text-transform:uppercase; color:#6a6560; padding:0.5rem 0.8rem;
+                                    background:#0b0c0f; border:1px solid rgba(255,255,255,0.06);
+                                    border-radius:4px 4px 0 0; text-align:center;">
+                            ✗ &nbsp; Before
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with h2:
+                        st.markdown("""
+                        <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.16em;
+                                    text-transform:uppercase; color:#c9a84c; padding:0.5rem 0.8rem;
+                                    background:#0b0c0f; border:1px solid rgba(201,168,76,0.25);
+                                    border-radius:4px 4px 0 0; text-align:center;">
+                            ✦ &nbsp; After
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    # Bullet rows
+                    for i, pair in enumerate(bullet_pairs):
+                        c1, c2 = st.columns(2, gap="large")
+                        bg_row = "#0d0e12" if i % 2 == 0 else "#111318"
+                        with c1:
+                            st.markdown(
+                                f"<div style='background:{bg_row}; border:1px solid rgba(255,255,255,0.05);"
+                                f"border-top:none; padding:0.85rem 1rem; font-size:0.88rem;"
+                                f"color:#6a6560; line-height:1.7; min-height:60px;'>"
+                                f"— &nbsp;{pair['original']}</div>",
+                                unsafe_allow_html=True
+                            )
+                        with c2:
+                            st.markdown(
+                                f"<div style='background:{bg_row}; border:1px solid rgba(201,168,76,0.12);"
+                                f"border-top:none; padding:0.85rem 1rem; font-size:0.88rem;"
+                                f"color:#f0ede6; line-height:1.7; min-height:60px;'>"
+                                f"<span style='color:#c9a84c; font-size:0.7rem;'>✦</span>"
+                                f"&nbsp;{pair['rewritten']}</div>",
+                                unsafe_allow_html=True
+                            )
+
+                    st.markdown("<br/>", unsafe_allow_html=True)
+
+                    # Apply + download
+                    st.markdown("""
+                    <div style="padding:1.2rem 1.5rem; background:rgba(201,168,76,0.06);
+                                border:1px solid rgba(201,168,76,0.2); border-radius:6px;
+                                margin-bottom:1rem;">
+                        <div style="font-family:'DM Mono',monospace; font-size:0.62rem;
+                                    letter-spacing:0.14em; text-transform:uppercase;
+                                    color:#c9a84c; margin-bottom:0.4rem;">&#10022; Apply Changes</div>
+                        <p style="font-size:0.83rem; color:#9a958f; margin:0; line-height:1.7;">
+                            Click <strong style='color:#f0ede6;'>Apply &amp; Download</strong> to
+                            replace every original bullet in your resume with the rewritten version
+                            and download the updated file.
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # Store updated resume in session state on Apply
+                    if "updated_resume" not in st.session_state:
+                        st.session_state.updated_resume = None
+
+                    ac1, ac2, ac3, _ = st.columns([1.3, 1.2, 1.2, 3])
+                    with ac1:
+                        if st.button("✦  Apply Changes", type="primary", key="apply_bullets"):
+                            st.session_state.updated_resume = build_updated_resume(resume_text, bullet_pairs)
+                            st.success(f"✓  {len(bullet_pairs)} bullets applied to your resume.")
+
+                    if st.session_state.updated_resume:
+                        with ac2:
+                            st.download_button(
+                                "↓  Download .txt",
+                                data=st.session_state.updated_resume,
+                                file_name="resume_updated.txt",
+                                mime="text/plain",
+                                key="dl_updated_txt"
+                            )
+                        with ac3:
+                            st.download_button(
+                                "↓  Download .doc",
+                                data=st.session_state.updated_resume.replace("\n", "\r\n"),
+                                file_name="resume_updated.doc",
+                                mime="application/msword",
+                                key="dl_updated_doc"
+                            )
+                else:
+                    # Fallback: model didn't use structured format
+                    st.markdown(display_text)
+                    st.markdown("<br/>", unsafe_allow_html=True)
+                    dcol1, _ = st.columns([1, 4])
+                    with dcol1:
+                        st.download_button(
+                            "↓  Download Analysis", data=display_text,
+                            file_name="resume_analysis.txt", mime="text/plain"
+                        )
+
+            # ── ALL OTHER GOALS ──────────────────────────────────────────
+            else:
+                st.markdown(display_text)
+                st.markdown("<br/>", unsafe_allow_html=True)
+
+                dcol1, _ = st.columns([1, 4])
+                with dcol1:
+                    st.download_button(
+                        "↓  Download Analysis", data=display_text,
+                        file_name="resume_analysis.txt", mime="text/plain"
+                    )
 
             if is_ats and cover_letter_text:
                 st.markdown("<hr/>", unsafe_allow_html=True)
