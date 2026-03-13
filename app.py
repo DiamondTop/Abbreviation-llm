@@ -956,17 +956,19 @@ if run:
                         bg_row = "#0d0e12" if i % 2 == 0 else "#111318"
                         with c1:
                             st.markdown(
-                                f"<div style='background:{bg_row}; border:1px solid rgba(255,255,255,0.05);"
+                                f"<div style='background:{bg_row}; border:1px solid rgba(255,255,255,0.07);"
                                 f"border-top:none; padding:0.85rem 1rem; font-size:0.88rem;"
-                                f"color:#6a6560; line-height:1.7; min-height:60px;'>"
-                                f"— &nbsp;{pair['original']}</div>",
+                                f"color:#f0ede6; line-height:1.7; min-height:60px;'>"
+                                f"<span style='color:#6a6560; font-size:0.75rem;'>—</span>"
+                                f"&nbsp;{pair['original']}</div>",
                                 unsafe_allow_html=True
                             )
                         with c2:
                             st.markdown(
-                                f"<div style='background:{bg_row}; border:1px solid rgba(201,168,76,0.12);"
-                                f"border-top:none; padding:0.85rem 1rem; font-size:0.88rem;"
-                                f"color:#f0ede6; line-height:1.7; min-height:60px;'>"
+                                f"<div style='background:{bg_row}; border:1px solid rgba(201,168,76,0.18);"
+                                f"border-top:none; border-left:3px solid #c9a84c;"
+                                f"padding:0.85rem 1rem; font-size:0.88rem;"
+                                f"color:#e8c87a; line-height:1.7; min-height:60px;'>"
                                 f"<span style='color:#c9a84c; font-size:0.7rem;'>✦</span>"
                                 f"&nbsp;{pair['rewritten']}</div>",
                                 unsafe_allow_html=True
