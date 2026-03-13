@@ -245,17 +245,13 @@ ANALYTICS_ON = bool(SUPABASE_URL and SUPABASE_KEY)
 
 EV_VISIT = "visit"
 EV_RUN   = "run"
-EV_ATS   = "goal_ats"
-EV_STAR  = "goal_star"
-EV_SUMM  = "goal_summary"
-EV_GAP   = "goal_gap"
-EV_COVER = "cover_letter_generated"
+EV_COMBINED = "goal_combined"
+EV_GAP      = "goal_gap"
+EV_COVER    = "cover_letter_generated"
 
 GOAL_EVENTS = {
-    "✦  ATS Keyword Optimization":     EV_ATS,
-    "✦  Rewrite Bullets with Impact":  EV_STAR,
-    "✦  Professional Summary Rewrite": EV_SUMM,
-    "✦  Skills Gap Analysis":          EV_GAP,
+    "✦  Full Resume Optimization": EV_COMBINED,
+    "✦  Skills Gap Analysis":      EV_GAP,
 }
 
 
@@ -354,15 +350,13 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     if ANALYTICS_ON:
-        counts       = get_counts()
-        total_visits = counts.get(EV_VISIT, 0)
-        total_runs   = counts.get(EV_RUN,   0)
-        ats_count    = counts.get(EV_ATS,   0)
-        star_count   = counts.get(EV_STAR,  0)
-        summ_count   = counts.get(EV_SUMM,  0)
-        gap_count    = counts.get(EV_GAP,   0)
-        cover_count  = counts.get(EV_COVER, 0)
-        total_goals  = ats_count + star_count + summ_count + gap_count or 1
+        counts        = get_counts()
+        total_visits  = counts.get(EV_VISIT,    0)
+        total_runs    = counts.get(EV_RUN,       0)
+        combined_count= counts.get(EV_COMBINED,  0)
+        gap_count     = counts.get(EV_GAP,       0)
+        cover_count   = counts.get(EV_COVER,     0)
+        total_goals   = combined_count + gap_count or 1
 
         def pct(n): return round(n / total_goals * 100)
 
@@ -418,10 +412,8 @@ with st.sidebar:
         )
 
         goal_items = [
-            ("ATS Keywords",          ats_count,  "#c9a84c", "rgba(201,168,76,0.2)"),
-            ("Impact Bullet Rewrite", star_count, "#63b3ed", "rgba(99,179,237,0.2)"),
-            ("Summary Rewrite",       summ_count, "#68d391", "rgba(104,211,145,0.2)"),
-            ("Skills Gap",            gap_count,  "#fc8181", "rgba(252,129,129,0.2)"),
+            ("Full Optimization", combined_count, "#c9a84c", "rgba(201,168,76,0.2)"),
+            ("Skills Gap",        gap_count,       "#fc8181", "rgba(252,129,129,0.2)"),
         ]
         for i, (name, count, color, grad) in enumerate(goal_items):
             w = pct(count)
@@ -650,6 +642,18 @@ def parse_bullet_pairs(text: str) -> list[dict]:
     return pairs
 
 
+def parse_combined_result(text: str) -> dict:
+    """Extract summary, ATS keywords, and bullet pairs from combined LLM output."""
+    summary_match = re.search(r"---SUMMARY---\s*(.*?)\s*---END_SUMMARY---", text, re.DOTALL)
+    ats_match     = re.search(r"---ATS_KEYWORDS---\s*(.*?)\s*---END_ATS---",  text, re.DOTALL)
+
+    summary  = summary_match.group(1).strip() if summary_match else ""
+    keywords = [k.strip() for k in ats_match.group(1).split(",") if k.strip()] if ats_match else []
+    pairs    = parse_bullet_pairs(text)
+
+    return {"summary": summary, "keywords": keywords, "pairs": pairs}
+
+
 def build_updated_resume(original_text: str, pairs: list[dict]) -> str:
     """Replace original bullets in resume text with rewritten versions."""
     updated = original_text
@@ -726,26 +730,35 @@ st.markdown("<hr/>", unsafe_allow_html=True)
 # ==============================
 # GOAL + JOB TITLE
 # ==============================
-BULLET_PROMPT = """Extract every work-experience bullet point from the resume and rewrite each one to highlight measurable achievements and strong action verbs.
+COMBINED_PROMPT = """You are an expert resume coach. Perform a full 3-part resume optimization in one pass.
 
-CRITICAL — output ONLY in this exact format, one block per bullet, no extra text before or after:
+OUTPUT FORMAT — use these exact markers, in this exact order, no other text:
 
+MATCH_SCORE: [0-100 based on how well the resume fits the job description]
+
+---SUMMARY---
+[Write a compelling 3-4 sentence professional summary that bridges the candidate's experience to this specific job. Mirror the exact seniority, vocabulary and industry language of the role. Do NOT use generic openers like "Results-driven professional".]
+---END_SUMMARY---
+
+---ATS_KEYWORDS---
+[List the top 10-15 keywords and phrases extracted from the job description that are missing or underrepresented in the resume. Comma-separated. Include hard skills, tools, certifications, and role-specific terminology.]
+---END_ATS---
+
+[Then output every work-experience bullet point as a block below. Include ALL bullets from ALL jobs:]
 ---BULLET---
-ORIGINAL: [paste the exact original bullet point here]
-REWRITTEN: [your improved version here]
+ORIGINAL: [exact original bullet text, copied verbatim from the resume]
+REWRITTEN: [rewritten version — strong action verb, quantified outcome, ATS keywords woven in naturally]
 ---END---
 
-Rules:
-- Include every bullet point from every job, not just a few
-- Keep ORIGINAL as the exact text from the resume (do not paraphrase it)
-- REWRITTEN should use strong action verbs, quantified outcomes, and results-driven language
-- Do not add any intro text, section headers, commentary, or explanation — only the ---BULLET--- blocks"""
+RULES:
+- Output NOTHING outside these markers — no intro, no section titles, no commentary
+- ORIGINAL must be the exact text from the resume, never paraphrased
+- Weave ATS keywords naturally into the REWRITTEN bullets — never stuff them
+- Cover every bullet from every role, not just a selection"""
 
 prompt_options = {
-    "✦  ATS Keyword Optimization":     "Analyze the Job Description for top keywords and modify my resume bullet points to include them naturally.",
-    "✦  Rewrite Bullets with Impact":  BULLET_PROMPT,
-    "✦  Professional Summary Rewrite": "Draft a compelling 3-4 sentence professional summary that bridges my current experience with this specific job.",
-    "✦  Skills Gap Analysis":          "Compare my resume against the job description. Identify exactly what hard and soft skills I am currently missing.",
+    "✦  Full Resume Optimization": COMBINED_PROMPT,
+    "✦  Skills Gap Analysis":      "Compare my resume against the job description. Identify exactly what hard and soft skills I am currently missing.",
 }
 
 col3, col4 = st.columns([1.2, 1], gap="large")
@@ -760,9 +773,10 @@ with col4:
 
 st.markdown("<br/>", unsafe_allow_html=True)
 
-is_ats     = "ATS"     in selected_strategy
-is_bullets = "Bullets" in selected_strategy
-if is_ats:
+is_combined = "Full" in selected_strategy
+is_gap      = "Gap"  in selected_strategy
+
+if is_combined:
     st.markdown("""
     <div style="display:inline-flex; align-items:center; gap:0.6rem;
                 background:rgba(201,168,76,0.07); border:1px solid rgba(201,168,76,0.2);
@@ -770,7 +784,7 @@ if is_ats:
         <span style="color:#c9a84c; font-size:0.75rem;">&#10022;</span>
         <span style="font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:0.12em;
                      text-transform:uppercase; color:#9a958f;">
-            A tailored cover letter will be generated automatically after this analysis
+            Runs ATS · bullet rewrite · summary + cover letter in one pass
         </span>
     </div>
     """, unsafe_allow_html=True)
@@ -801,14 +815,14 @@ if run:
             ("🤖", "Running AI analysis"),
             ("✅", "Complete"),
         ]
-        steps_cover = [
+        steps_combined = [
             ("📄", "Reading resume"),
             ("🔍", "Parsing job description"),
-            ("🤖", "Running AI analysis"),
+            ("🤖", "Optimizing resume"),
             ("✉️", "Generating cover letter"),
             ("✅", "Complete"),
         ]
-        steps = steps_cover if is_ats else steps_base
+        steps = steps_combined if is_combined else steps_base
         total = len(steps) - 1
 
         render_progress = make_progress_ui(steps)
@@ -823,7 +837,7 @@ if run:
         result = call_llm(system_task, f"JOB DESCRIPTION:\n{job_desc}\n\nRESUME:\n{resume_text}")
 
         cover_letter_text = ""
-        if is_ats and result:
+        if is_combined and result:
             render_progress(3)
             cover_letter_text = generate_cover_letter(job_desc, resume_text, job_title)
             if cover_letter_text:
@@ -906,26 +920,91 @@ if run:
             </div>
             """, unsafe_allow_html=True)
 
-            # ── BULLET COMPARISON UI ──────────────────────────────────────
-            if is_bullets:
-                bullet_pairs = parse_bullet_pairs(display_text)
+            # ── COMBINED OPTIMIZATION UI ─────────────────────────────────
+            if is_combined:
+                parsed = parse_combined_result(display_text)
 
-                if bullet_pairs:
+                # ① Header
+                st.markdown(f"""
+                <div style="margin-bottom:2rem;">
+                    <div style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em;
+                                text-transform:uppercase; color:#c9a84c; margin-bottom:0.35rem;
+                                display:flex; align-items:center; gap:0.6rem;">
+                        <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>
+                        Full Resume Optimization
+                    </div>
+                    <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
+                                font-weight:300; color:#f0ede6; display:flex; align-items:center; flex-wrap:wrap;">
+                        3 improvements applied{title_pill}
+                    </div>
+                    <p style="font-size:0.85rem; color:#9a958f; margin:0.4rem 0 0; line-height:1.7;">
+                        New professional summary &nbsp;·&nbsp; ATS keywords identified
+                        &nbsp;·&nbsp; {len(parsed['pairs'])} bullet{"s" if len(parsed['pairs']) != 1 else ""} rewritten
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # ② Professional Summary
+                if parsed["summary"]:
+                    st.markdown("""
+                    <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.18em;
+                                text-transform:uppercase; color:#c9a84c; margin-bottom:0.6rem;
+                                display:flex; align-items:center; gap:0.5rem;">
+                        <span style="display:inline-block;width:14px;height:1px;background:#c9a84c;"></span>
+                        ① New Professional Summary
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.markdown(
+                        f"<div style='background:#111318; border:1px solid rgba(201,168,76,0.25);"
+                        f"border-left:3px solid #c9a84c; border-radius:0 6px 6px 0;"
+                        f"padding:1.4rem 1.6rem; font-size:0.95rem; color:#f0ede6;"
+                        f"line-height:1.85; margin-bottom:1.8rem;'>"
+                        f"{parsed['summary']}</div>",
+                        unsafe_allow_html=True
+                    )
+                    sc1, _ = st.columns([1, 4])
+                    with sc1:
+                        st.download_button(
+                            "↓  Download Summary",
+                            data=parsed["summary"],
+                            file_name="professional_summary.txt",
+                            mime="text/plain",
+                            key="dl_summary"
+                        )
+                    st.markdown("<br/>", unsafe_allow_html=True)
+
+                # ③ ATS Keywords
+                if parsed["keywords"]:
+                    st.markdown("""
+                    <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.18em;
+                                text-transform:uppercase; color:#c9a84c; margin-bottom:0.6rem;
+                                display:flex; align-items:center; gap:0.5rem;">
+                        <span style="display:inline-block;width:14px;height:1px;background:#c9a84c;"></span>
+                        ② Missing ATS Keywords to Add
+                    </div>
+                    """, unsafe_allow_html=True)
+                    pills_html = "".join([
+                        f"<span style='display:inline-block; background:rgba(201,168,76,0.09);"
+                        f"border:1px solid rgba(201,168,76,0.28); border-radius:20px;"
+                        f"padding:0.25rem 0.8rem; font-family:DM Mono,monospace; font-size:0.7rem;"
+                        f"color:#e8c87a; margin:0.2rem;'>{kw}</span>"
+                        for kw in parsed["keywords"]
+                    ])
+                    st.markdown(
+                        f"<div style='background:#111318; border:1px solid rgba(201,168,76,0.15);"
+                        f"border-radius:6px; padding:1rem 1.2rem; margin-bottom:1.8rem;"
+                        f"line-height:2.2;'>{pills_html}</div>",
+                        unsafe_allow_html=True
+                    )
+
+                # ④ Bullet Before/After
+                if parsed["pairs"]:
                     st.markdown(f"""
-                    <div style="margin-bottom:1.4rem;">
-                        <div style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em;
-                                    text-transform:uppercase; color:#c9a84c; margin-bottom:0.35rem;
-                                    display:flex; align-items:center; gap:0.6rem;">
-                            <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>Results
-                        </div>
-                        <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
-                                    font-weight:300; color:#f0ede6; margin-bottom:0.3rem;">
-                            Impact Bullet Rewriting{title_pill}
-                        </div>
-                        <p style="font-size:0.85rem; color:#9a958f; font-weight:300; margin:0; line-height:1.7;">
-                            {len(bullet_pairs)} bullet{"s" if len(bullet_pairs) != 1 else ""} rewritten.
-                            Review each change, then apply and download your updated resume.
-                        </p>
+                    <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.18em;
+                                text-transform:uppercase; color:#c9a84c; margin-bottom:0.6rem;
+                                display:flex; align-items:center; gap:0.5rem;">
+                        <span style="display:inline-block;width:14px;height:1px;background:#c9a84c;"></span>
+                        ③ Bullet Rewrites — {len(parsed['pairs'])} total
                     </div>
                     """, unsafe_allow_html=True)
 
@@ -938,8 +1017,7 @@ if run:
                                     background:#0b0c0f; border:1px solid rgba(255,255,255,0.06);
                                     border-radius:4px 4px 0 0; text-align:center;">
                             ✗ &nbsp; Before
-                        </div>
-                        """, unsafe_allow_html=True)
+                        </div>""", unsafe_allow_html=True)
                     with h2:
                         st.markdown("""
                         <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.16em;
@@ -947,11 +1025,9 @@ if run:
                                     background:#0b0c0f; border:1px solid rgba(201,168,76,0.25);
                                     border-radius:4px 4px 0 0; text-align:center;">
                             ✦ &nbsp; After
-                        </div>
-                        """, unsafe_allow_html=True)
+                        </div>""", unsafe_allow_html=True)
 
-                    # Bullet rows
-                    for i, pair in enumerate(bullet_pairs):
+                    for i, pair in enumerate(parsed["pairs"]):
                         c1, c2 = st.columns(2, gap="large")
                         bg_row = "#0d0e12" if i % 2 == 0 else "#111318"
                         with c1:
@@ -976,32 +1052,29 @@ if run:
 
                     st.markdown("<br/>", unsafe_allow_html=True)
 
-                    # Apply + download
+                    # Apply + Download
                     st.markdown("""
                     <div style="padding:1.2rem 1.5rem; background:rgba(201,168,76,0.06);
                                 border:1px solid rgba(201,168,76,0.2); border-radius:6px;
                                 margin-bottom:1rem;">
                         <div style="font-family:'DM Mono',monospace; font-size:0.62rem;
                                     letter-spacing:0.14em; text-transform:uppercase;
-                                    color:#c9a84c; margin-bottom:0.4rem;">&#10022; Apply Changes</div>
+                                    color:#c9a84c; margin-bottom:0.4rem;">&#10022; Apply All Changes</div>
                         <p style="font-size:0.83rem; color:#9a958f; margin:0; line-height:1.7;">
-                            Click <strong style='color:#f0ede6;'>Apply &amp; Download</strong> to
-                            replace every original bullet in your resume with the rewritten version
-                            and download the updated file.
+                            Click <strong style='color:#f0ede6;'>Apply &amp; Download</strong> to merge
+                            all rewritten bullets into your original resume and download the updated file.
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
 
-                    # Store updated resume in session state on Apply
                     if "updated_resume" not in st.session_state:
                         st.session_state.updated_resume = None
 
                     ac1, ac2, ac3, _ = st.columns([1.3, 1.2, 1.2, 3])
                     with ac1:
                         if st.button("✦  Apply Changes", type="primary", key="apply_bullets"):
-                            st.session_state.updated_resume = build_updated_resume(resume_text, bullet_pairs)
-                            st.success(f"✓  {len(bullet_pairs)} bullets applied to your resume.")
-
+                            st.session_state.updated_resume = build_updated_resume(resume_text, parsed["pairs"])
+                            st.success(f"✓  {len(parsed['pairs'])} bullets applied.")
                     if st.session_state.updated_resume:
                         with ac2:
                             st.download_button(
@@ -1019,22 +1092,20 @@ if run:
                                 mime="application/msword",
                                 key="dl_updated_doc"
                             )
-                else:
-                    # Fallback: model didn't use structured format
+
+                # Fallback if parsing failed
+                elif not parsed["summary"] and not parsed["keywords"]:
                     st.markdown(display_text)
                     st.markdown("<br/>", unsafe_allow_html=True)
                     dcol1, _ = st.columns([1, 4])
                     with dcol1:
-                        st.download_button(
-                            "↓  Download Analysis", data=display_text,
-                            file_name="resume_analysis.txt", mime="text/plain"
-                        )
+                        st.download_button("↓  Download Analysis", data=display_text,
+                                           file_name="resume_analysis.txt", mime="text/plain")
 
-            # ── ALL OTHER GOALS ──────────────────────────────────────────
+            # ── SKILLS GAP ───────────────────────────────────────────────
             else:
                 st.markdown(display_text)
                 st.markdown("<br/>", unsafe_allow_html=True)
-
                 dcol1, _ = st.columns([1, 4])
                 with dcol1:
                     st.download_button(
@@ -1042,7 +1113,8 @@ if run:
                         file_name="resume_analysis.txt", mime="text/plain"
                     )
 
-            if is_ats and cover_letter_text:
+            # ── COVER LETTER (combined runs only) ────────────────────────
+            if is_combined and cover_letter_text:
                 st.markdown("<hr/>", unsafe_allow_html=True)
 
                 st.markdown("""
