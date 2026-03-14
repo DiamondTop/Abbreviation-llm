@@ -770,27 +770,49 @@ RULES:
 - Weave ATS keywords naturally into the REWRITTEN bullets — never stuff them
 - Cover every bullet from every role, not just a selection"""
 
-job_title = st.text_input(
-    "Target Job Title (Optional)",
-    placeholder="e.g. Senior Data Engineer, Product Manager, UX Designer...",
-    help="Providing a job title anchors the AI's vocabulary, seniority tone, and keyword priority to that specific role."
-)
+GAP_PROMPT = "Compare my resume against the job description. Identify exactly what hard and soft skills I am currently missing, split into Hard Skills and Soft Skills sections. For each missing skill, briefly explain why it matters for this role."
+
+col3, col4 = st.columns([1.2, 1], gap="large")
+with col3:
+    selected_strategy = st.selectbox(
+        "Choose Your Goal",
+        ["✦  Full Resume Optimization", "✦  Skills Gap Analysis"]
+    )
+with col4:
+    job_title = st.text_input(
+        "Target Job Title (Optional)",
+        placeholder="e.g. Senior Data Engineer, Product Manager, UX Designer...",
+        help="Providing a job title anchors the AI's vocabulary, seniority tone, and keyword priority to that specific role."
+    )
 
 st.markdown("<br/>", unsafe_allow_html=True)
 
-st.markdown("""
-<div style="display:inline-flex; align-items:center; gap:0.6rem;
-            background:rgba(201,168,76,0.07); border:1px solid rgba(201,168,76,0.2);
-            border-radius:20px; padding:0.35rem 0.9rem; margin-bottom:1rem;">
-    <span style="color:#c9a84c; font-size:0.75rem;">&#10022;</span>
-    <span style="font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:0.12em;
-                 text-transform:uppercase; color:#9a958f;">
-        Runs ATS &middot; bullet rewrite &middot; summary rewrite &middot; cover letter — all in one pass
-    </span>
-</div>
-""", unsafe_allow_html=True)
+is_combined = "Full" in selected_strategy
 
-is_combined = True  # single mode — always run full optimization
+if is_combined:
+    st.markdown("""
+    <div style="display:inline-flex; align-items:center; gap:0.6rem;
+                background:rgba(201,168,76,0.07); border:1px solid rgba(201,168,76,0.2);
+                border-radius:20px; padding:0.35rem 0.9rem; margin-bottom:1rem;">
+        <span style="color:#c9a84c; font-size:0.75rem;">&#10022;</span>
+        <span style="font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:0.12em;
+                     text-transform:uppercase; color:#9a958f;">
+            Runs ATS &middot; bullet rewrite &middot; summary rewrite &middot; cover letter — all in one pass
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+    <div style="display:inline-flex; align-items:center; gap:0.6rem;
+                background:rgba(201,168,76,0.07); border:1px solid rgba(201,168,76,0.2);
+                border-radius:20px; padding:0.35rem 0.9rem; margin-bottom:1rem;">
+        <span style="color:#c9a84c; font-size:0.75rem;">&#10022;</span>
+        <span style="font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:0.12em;
+                     text-transform:uppercase; color:#9a958f;">
+            Compares your resume against the job description to surface missing skills
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
 
 col_btn, _ = st.columns([1, 5])
 with col_btn:
@@ -807,10 +829,13 @@ if run:
     elif not job_desc.strip():
         st.warning("Please paste a job description to match against.")
     else:
-        system_task = inject_job_title(COMBINED_PROMPT, job_title)
+        system_task = inject_job_title(
+            COMBINED_PROMPT if is_combined else GAP_PROMPT,
+            job_title
+        )
 
         track(EV_RUN)
-        track(EV_COMBINED)
+        track(EV_COMBINED if is_combined else EV_GAP)
 
         steps_base = [
             ("📄", "Reading resume"),
@@ -1133,6 +1158,30 @@ if run:
                     with dcol1:
                         st.download_button("↓  Download Analysis", data=display_text,
                                            file_name="resume_analysis.txt", mime="text/plain")
+
+            # ── SKILLS GAP ───────────────────────────────────────────────
+            else:
+                st.markdown(f"""
+                <div style="margin-bottom:1.4rem;">
+                    <div style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em;
+                                text-transform:uppercase; color:#c9a84c; margin-bottom:0.35rem;
+                                display:flex; align-items:center; gap:0.6rem;">
+                        <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>Results
+                    </div>
+                    <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
+                                font-weight:300; color:#f0ede6; display:flex; align-items:center; flex-wrap:wrap;">
+                        Skills Gap Analysis{title_pill}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                st.markdown(display_text)
+                st.markdown("<br/>", unsafe_allow_html=True)
+                dcol1, _ = st.columns([1, 4])
+                with dcol1:
+                    st.download_button(
+                        "↓  Download Analysis", data=display_text,
+                        file_name="skills_gap.txt", mime="text/plain"
+                    )
 
             # ── COVER LETTER ─────────────────────────────────────────────
             if cover_letter_text:
