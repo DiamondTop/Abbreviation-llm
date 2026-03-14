@@ -643,15 +643,25 @@ def parse_bullet_pairs(text: str) -> list[dict]:
 
 
 def parse_combined_result(text: str) -> dict:
-    """Extract summary, ATS keywords, and bullet pairs from combined LLM output."""
-    summary_match = re.search(r"---SUMMARY---\s*(.*?)\s*---END_SUMMARY---", text, re.DOTALL)
-    ats_match     = re.search(r"---ATS_KEYWORDS---\s*(.*?)\s*---END_ATS---",  text, re.DOTALL)
+    """Extract original summary, new summary, ATS keywords, and bullet pairs from combined LLM output."""
+    orig_summ_match = re.search(r"---ORIGINAL_SUMMARY---\s*(.*?)\s*---END_ORIGINAL_SUMMARY---", text, re.DOTALL)
+    summary_match   = re.search(r"---SUMMARY---\s*(.*?)\s*---END_SUMMARY---",                   text, re.DOTALL)
+    ats_match       = re.search(r"---ATS_KEYWORDS---\s*(.*?)\s*---END_ATS---",                  text, re.DOTALL)
+
+    original_summary = orig_summ_match.group(1).strip() if orig_summ_match else ""
+    if original_summary.upper() == "NONE":
+        original_summary = ""
 
     summary  = summary_match.group(1).strip() if summary_match else ""
     keywords = [k.strip() for k in ats_match.group(1).split(",") if k.strip()] if ats_match else []
     pairs    = parse_bullet_pairs(text)
 
-    return {"summary": summary, "keywords": keywords, "pairs": pairs}
+    return {
+        "original_summary": original_summary,
+        "summary":          summary,
+        "keywords":         keywords,
+        "pairs":            pairs,
+    }
 
 
 def build_updated_resume(original_text: str, pairs: list[dict]) -> str:
@@ -736,6 +746,10 @@ OUTPUT FORMAT — use these exact markers, in this exact order, no other text:
 
 MATCH_SCORE: [0-100 based on how well the resume fits the job description]
 
+---ORIGINAL_SUMMARY---
+[Copy the candidate's existing professional summary or objective statement verbatim from the resume. If none exists, write: NONE]
+---END_ORIGINAL_SUMMARY---
+
 ---SUMMARY---
 [Write a compelling 3-4 sentence professional summary that bridges the candidate's experience to this specific job. Mirror the exact seniority, vocabulary and industry language of the role. Do NOT use generic openers like "Results-driven professional".]
 ---END_SUMMARY---
@@ -756,38 +770,27 @@ RULES:
 - Weave ATS keywords naturally into the REWRITTEN bullets — never stuff them
 - Cover every bullet from every role, not just a selection"""
 
-prompt_options = {
-    "✦  Full Resume Optimization": COMBINED_PROMPT,
-    "✦  Skills Gap Analysis":      "Compare my resume against the job description. Identify exactly what hard and soft skills I am currently missing.",
-}
-
-col3, col4 = st.columns([1.2, 1], gap="large")
-with col3:
-    selected_strategy = st.selectbox("Choose Your Goal", list(prompt_options.keys()))
-with col4:
-    job_title = st.text_input(
-        "Target Job Title (Optional)",
-        placeholder="e.g. Senior Data Engineer, Product Manager, UX Designer...",
-        help="Providing a job title anchors the AI's vocabulary, seniority tone, and keyword priority to that specific role."
-    )
+job_title = st.text_input(
+    "Target Job Title (Optional)",
+    placeholder="e.g. Senior Data Engineer, Product Manager, UX Designer...",
+    help="Providing a job title anchors the AI's vocabulary, seniority tone, and keyword priority to that specific role."
+)
 
 st.markdown("<br/>", unsafe_allow_html=True)
 
-is_combined = "Full" in selected_strategy
-is_gap      = "Gap"  in selected_strategy
+st.markdown("""
+<div style="display:inline-flex; align-items:center; gap:0.6rem;
+            background:rgba(201,168,76,0.07); border:1px solid rgba(201,168,76,0.2);
+            border-radius:20px; padding:0.35rem 0.9rem; margin-bottom:1rem;">
+    <span style="color:#c9a84c; font-size:0.75rem;">&#10022;</span>
+    <span style="font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:0.12em;
+                 text-transform:uppercase; color:#9a958f;">
+        Runs ATS &middot; bullet rewrite &middot; summary rewrite &middot; cover letter — all in one pass
+    </span>
+</div>
+""", unsafe_allow_html=True)
 
-if is_combined:
-    st.markdown("""
-    <div style="display:inline-flex; align-items:center; gap:0.6rem;
-                background:rgba(201,168,76,0.07); border:1px solid rgba(201,168,76,0.2);
-                border-radius:20px; padding:0.35rem 0.9rem; margin-bottom:1rem;">
-        <span style="color:#c9a84c; font-size:0.75rem;">&#10022;</span>
-        <span style="font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:0.12em;
-                     text-transform:uppercase; color:#9a958f;">
-            Runs ATS · bullet rewrite · summary + cover letter in one pass
-        </span>
-    </div>
-    """, unsafe_allow_html=True)
+is_combined = True  # single mode — always run full optimization
 
 col_btn, _ = st.columns([1, 5])
 with col_btn:
@@ -804,10 +807,10 @@ if run:
     elif not job_desc.strip():
         st.warning("Please paste a job description to match against.")
     else:
-        system_task = inject_job_title(prompt_options[selected_strategy], job_title)
+        system_task = inject_job_title(COMBINED_PROMPT, job_title)
 
         track(EV_RUN)
-        track(GOAL_EVENTS.get(selected_strategy, "goal_other"))
+        track(EV_COMBINED)
 
         steps_base = [
             ("📄", "Reading resume"),
@@ -915,7 +918,7 @@ if run:
                 </div>
                 <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
                             font-weight:300; color:#f0ede6; display:flex; align-items:center; flex-wrap:wrap;">
-                    {selected_strategy.replace("✦  ", "")}{title_pill}
+                    Full Resume Optimization{title_pill}
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -944,24 +947,53 @@ if run:
                 </div>
                 """, unsafe_allow_html=True)
 
-                # ② Professional Summary
+                # ② Professional Summary — Before / After
                 if parsed["summary"]:
                     st.markdown("""
                     <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.18em;
                                 text-transform:uppercase; color:#c9a84c; margin-bottom:0.6rem;
                                 display:flex; align-items:center; gap:0.5rem;">
                         <span style="display:inline-block;width:14px;height:1px;background:#c9a84c;"></span>
-                        ① New Professional Summary
+                        ① Professional Summary
                     </div>
                     """, unsafe_allow_html=True)
-                    st.markdown(
-                        f"<div style='background:#111318; border:1px solid rgba(201,168,76,0.25);"
-                        f"border-left:3px solid #c9a84c; border-radius:0 6px 6px 0;"
-                        f"padding:1.4rem 1.6rem; font-size:0.95rem; color:#f0ede6;"
-                        f"line-height:1.85; margin-bottom:1.8rem;'>"
-                        f"{parsed['summary']}</div>",
-                        unsafe_allow_html=True
-                    )
+
+                    sh1, sh2 = st.columns(2, gap="large")
+                    with sh1:
+                        st.markdown("""
+                        <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.16em;
+                                    text-transform:uppercase; color:#6a6560; padding:0.5rem 0.8rem;
+                                    background:#0b0c0f; border:1px solid rgba(255,255,255,0.06);
+                                    border-radius:4px 4px 0 0; text-align:center;">
+                            ✗ &nbsp; Before
+                        </div>""", unsafe_allow_html=True)
+                        st.markdown(
+                            f"<div style='background:#0d0e12; border:1px solid rgba(255,255,255,0.07);"
+                            f"border-top:none; padding:1.2rem 1.2rem; font-size:0.92rem;"
+                            f"color:#f0ede6; line-height:1.85;'>"
+                            f"{'<span style=\"color:#4a4845; font-style:italic;\">No existing summary found on resume.</span>' if not parsed['original_summary'] else parsed['original_summary']}"
+                            f"</div>",
+                            unsafe_allow_html=True
+                        )
+                    with sh2:
+                        st.markdown("""
+                        <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.16em;
+                                    text-transform:uppercase; color:#c9a84c; padding:0.5rem 0.8rem;
+                                    background:#0b0c0f; border:1px solid rgba(201,168,76,0.25);
+                                    border-radius:4px 4px 0 0; text-align:center;">
+                            ✦ &nbsp; After
+                        </div>""", unsafe_allow_html=True)
+                        st.markdown(
+                            f"<div style='background:#0d0e12; border:1px solid rgba(201,168,76,0.18);"
+                            f"border-top:none; border-left:3px solid #c9a84c;"
+                            f"padding:1.2rem 1.2rem; font-size:0.92rem;"
+                            f"color:#e8c87a; line-height:1.85;'>"
+                            f"<span style='color:#c9a84c; font-size:0.7rem;'>✦</span>"
+                            f"&nbsp;{parsed['summary']}</div>",
+                            unsafe_allow_html=True
+                        )
+
+                    st.markdown("<br/>", unsafe_allow_html=True)
                     sc1, _ = st.columns([1, 4])
                     with sc1:
                         st.download_button(
@@ -1093,8 +1125,8 @@ if run:
                                 key="dl_updated_doc"
                             )
 
-                # Fallback if parsing failed
-                elif not parsed["summary"] and not parsed["keywords"]:
+                # Fallback if parsing failed entirely
+                elif not parsed["summary"] and not parsed["keywords"] and not parsed["pairs"]:
                     st.markdown(display_text)
                     st.markdown("<br/>", unsafe_allow_html=True)
                     dcol1, _ = st.columns([1, 4])
@@ -1102,19 +1134,8 @@ if run:
                         st.download_button("↓  Download Analysis", data=display_text,
                                            file_name="resume_analysis.txt", mime="text/plain")
 
-            # ── SKILLS GAP ───────────────────────────────────────────────
-            else:
-                st.markdown(display_text)
-                st.markdown("<br/>", unsafe_allow_html=True)
-                dcol1, _ = st.columns([1, 4])
-                with dcol1:
-                    st.download_button(
-                        "↓  Download Analysis", data=display_text,
-                        file_name="resume_analysis.txt", mime="text/plain"
-                    )
-
-            # ── COVER LETTER (combined runs only) ────────────────────────
-            if is_combined and cover_letter_text:
+            # ── COVER LETTER ─────────────────────────────────────────────
+            if cover_letter_text:
                 st.markdown("<hr/>", unsafe_allow_html=True)
 
                 st.markdown("""
