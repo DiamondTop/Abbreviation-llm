@@ -351,12 +351,19 @@ with st.sidebar:
 
     if ANALYTICS_ON:
         counts        = get_counts()
-        total_visits  = counts.get(EV_VISIT,    0)
-        total_runs    = counts.get(EV_RUN,       0)
-        combined_count= counts.get(EV_COMBINED,  0)
-        gap_count     = counts.get(EV_GAP,       0)
-        cover_count   = counts.get(EV_COVER,     0)
-        total_goals   = combined_count + gap_count or 1
+        total_visits  = counts.get(EV_VISIT,   0)
+        total_runs    = counts.get(EV_RUN,      0)
+        cover_count   = counts.get(EV_COVER,    0)
+
+        # Combined count includes new event + legacy events from before the rename
+        combined_count = (
+            counts.get(EV_COMBINED,    0) +
+            counts.get("goal_ats",     0) +
+            counts.get("goal_star",    0) +
+            counts.get("goal_summary", 0)
+        )
+        gap_count    = counts.get(EV_GAP, 0)
+        total_goals  = combined_count + gap_count or 1
 
         def pct(n): return round(n / total_goals * 100)
 
