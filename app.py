@@ -265,6 +265,12 @@ def _sb_headers():
 
 
 def track(event: str):
+    """Write event to Supabase AND immediately increment local session state counts."""
+    # Always update local counts immediately — no race condition
+    if "sb_counts" in st.session_state:
+        st.session_state.sb_counts[event] = (
+            st.session_state.sb_counts.get(event, 0) + 1
+        )
     if not ANALYTICS_ON:
         return
     try:
@@ -279,6 +285,7 @@ def track(event: str):
 
 
 def get_counts() -> dict:
+    """Fetch all-time counts from Supabase (called once per session to seed local state)."""
     if not ANALYTICS_ON:
         return {}
     try:
@@ -296,6 +303,10 @@ def get_counts() -> dict:
     except Exception:
         return {}
 
+
+# ── Seed local counts from Supabase once per session ─────────────────
+if "sb_counts" not in st.session_state:
+    st.session_state.sb_counts = get_counts()
 
 if "visited" not in st.session_state:
     st.session_state.visited = True
@@ -350,7 +361,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     if ANALYTICS_ON:
-        counts        = get_counts()
+        counts        = st.session_state.sb_counts          # always current — updated instantly by track()
         total_visits  = counts.get(EV_VISIT,   0)
         total_runs    = counts.get(EV_RUN,      0)
         cover_count   = counts.get(EV_COVER,    0)
