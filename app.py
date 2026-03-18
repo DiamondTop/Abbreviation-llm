@@ -830,6 +830,8 @@ st.markdown("<hr/>", unsafe_allow_html=True)
 # ==============================
 # RESULTS
 # ==============================
+
+# ── Clear stale results when user starts a new run ───────────────────
 if run:
     if not resume_file:
         st.warning("Please upload a resume to get started.")
@@ -840,9 +842,6 @@ if run:
             COMBINED_PROMPT if is_combined else GAP_PROMPT,
             job_title
         )
-
-        track(EV_RUN)
-        track(EV_COMBINED if is_combined else EV_GAP)
 
         steps_base = [
             ("📄", "Reading resume"),
@@ -875,368 +874,336 @@ if run:
         if is_combined and result:
             render_progress(3)
             cover_letter_text = generate_cover_letter(job_desc, resume_text, job_title)
-            if cover_letter_text:
-                track(EV_COVER)
 
         render_progress(total)
         _time.sleep(0.6)
         render_progress(None)
 
         if result:
-            score_match = re.search(r"MATCH_SCORE:\s*(\d+)", result)
+            # Track AFTER LLM succeeds, then store + rerun so sidebar refreshes
+            track(EV_RUN)
+            track(EV_COMBINED if is_combined else EV_GAP)
+            if cover_letter_text:
+                track(EV_COVER)
 
-            if score_match:
-                score_val    = int(score_match.group(1))
-                color        = get_score_color(score_val)
-                display_text = result.replace(score_match.group(0), "").strip()
-                score_label  = (
-                    "Strong Match" if score_val >= 80
-                    else "Partial Match" if score_val >= 50
-                    else "Needs Work"
-                )
+            st.session_state.analysis_result = {
+                "result":             result,
+                "cover_letter_text":  cover_letter_text,
+                "resume_text":        resume_text,
+                "is_combined":        is_combined,
+                "job_title":          job_title,
+                "provider":           PROVIDER,
+            }
+            st.session_state.updated_resume = None   # reset any previous apply
+            st.rerun()
 
-                title_badge = (
-                    f"&nbsp;&middot;&nbsp;<span style='color:#c9a84c;'>{job_title.strip()}</span>"
-                    if job_title.strip() else ""
-                )
-                st.markdown(f"""
-                <div style="padding:0.85rem 1.3rem; background:rgba(40,167,69,0.07);
-                            border:1px solid rgba(40,167,69,0.28); border-radius:3px;
-                            margin-bottom:1.4rem; font-family:'DM Mono',monospace;
-                            font-size:0.68rem; letter-spacing:0.14em; text-transform:uppercase; color:#28A745;">
-                    &#10003; &nbsp; Analysis complete &middot; {PROVIDER.split('(')[0].strip()}{title_badge}
-                </div>
-                """, unsafe_allow_html=True)
+# ── Display stored results (persists across reruns) ───────────────────
+if st.session_state.get("analysis_result"):
+    res          = st.session_state.analysis_result
+    result       = res["result"]
+    cover_letter_text = res["cover_letter_text"]
+    resume_text  = res["resume_text"]
+    is_combined  = res["is_combined"]
+    job_title    = res["job_title"]
+    provider     = res["provider"]
 
-                m1, m2 = st.columns([1, 3], gap="large")
-                with m1:
-                    st.metric("Match Score", f"{score_val}%", delta=score_label)
-                with m2:
-                    st.markdown(f"""
-                    <div style="margin-top:1.1rem;">
-                        <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.16em;
-                                    text-transform:uppercase; color:#9a958f; margin-bottom:0.55rem;">
-                            Resume &ndash; Job Alignment
-                        </div>
-                        <div style="height:7px; background:#1c1f28; border-radius:3px; overflow:hidden;">
-                            <div style="height:100%; width:{score_val}%; background:{color}; border-radius:3px;"></div>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-size:0.6rem;
-                                    color:#4a4845; font-family:'DM Mono',monospace; margin-top:0.35rem;">
-                            <span>0%</span><span>50%</span><span>100%</span>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                display_text = result
+    score_match = re.search(r"MATCH_SCORE:\s*(\d+)", result)
+    if score_match:
+        score_val    = int(score_match.group(1))
+        color        = get_score_color(score_val)
+        display_text = result.replace(score_match.group(0), "").strip()
+        score_label  = (
+            "Strong Match" if score_val >= 80
+            else "Partial Match" if score_val >= 50
+            else "Needs Work"
+        )
+        title_badge = (
+            f"&nbsp;&middot;&nbsp;<span style='color:#c9a84c;'>{job_title.strip()}</span>"
+            if job_title.strip() else ""
+        )
+        st.markdown(f"""
+        <div style="padding:0.85rem 1.3rem; background:rgba(40,167,69,0.07);
+                    border:1px solid rgba(40,167,69,0.28); border-radius:3px;
+                    margin-bottom:1.4rem; font-family:'DM Mono',monospace;
+                    font-size:0.68rem; letter-spacing:0.14em; text-transform:uppercase; color:#28A745;">
+            &#10003; &nbsp; Analysis complete &middot; {provider.split('(')[0].strip()}{title_badge}
+        </div>
+        """, unsafe_allow_html=True)
 
-            st.markdown("<hr/>", unsafe_allow_html=True)
-
-            title_pill = (
-                f"<span style='display:inline-block; background:rgba(201,168,76,0.1); "
-                f"border:1px solid rgba(201,168,76,0.28); border-radius:20px; "
-                f"padding:0.18rem 0.8rem; font-family:DM Mono,monospace; font-size:0.58rem; "
-                f"letter-spacing:0.12em; text-transform:uppercase; color:#c9a84c; "
-                f"vertical-align:middle; margin-left:0.8rem;'>{job_title.strip()}</span>"
-                if job_title.strip() else ""
-            )
-
+        m1, m2 = st.columns([1, 3], gap="large")
+        with m1:
+            st.metric("Match Score", f"{score_val}%", delta=score_label)
+        with m2:
             st.markdown(f"""
-            <div style="margin-bottom:1.1rem;">
-                <div style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em;
-                            text-transform:uppercase; color:#c9a84c; margin-bottom:0.35rem;
-                            display:flex; align-items:center; gap:0.6rem;">
-                    <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>Results
+            <div style="margin-top:1.1rem;">
+                <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.16em;
+                            text-transform:uppercase; color:#9a958f; margin-bottom:0.55rem;">
+                    Resume &ndash; Job Alignment
                 </div>
-                <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
-                            font-weight:300; color:#f0ede6; display:flex; align-items:center; flex-wrap:wrap;">
-                    Full Resume Optimization{title_pill}
+                <div style="height:7px; background:#1c1f28; border-radius:3px; overflow:hidden;">
+                    <div style="height:100%; width:{score_val}%; background:{color}; border-radius:3px;"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.6rem;
+                            color:#4a4845; font-family:'DM Mono',monospace; margin-top:0.35rem;">
+                    <span>0%</span><span>50%</span><span>100%</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
+    else:
+        display_text = result
 
-            # ── COMBINED OPTIMIZATION UI ─────────────────────────────────
-            if is_combined:
-                parsed = parse_combined_result(display_text)
+    st.markdown("<hr/>", unsafe_allow_html=True)
 
-                # ① Header
-                st.markdown(f"""
-                <div style="margin-bottom:2rem;">
-                    <div style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em;
-                                text-transform:uppercase; color:#c9a84c; margin-bottom:0.35rem;
-                                display:flex; align-items:center; gap:0.6rem;">
-                        <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>
-                        Full Resume Optimization
-                    </div>
-                    <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
-                                font-weight:300; color:#f0ede6; display:flex; align-items:center; flex-wrap:wrap;">
-                        3 improvements applied{title_pill}
-                    </div>
-                    <p style="font-size:0.85rem; color:#9a958f; margin:0.4rem 0 0; line-height:1.7;">
-                        New professional summary &nbsp;·&nbsp; ATS keywords identified
-                        &nbsp;·&nbsp; {len(parsed['pairs'])} bullet{"s" if len(parsed['pairs']) != 1 else ""} rewritten
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
+    title_pill = (
+        f"<span style='display:inline-block; background:rgba(201,168,76,0.1); "
+        f"border:1px solid rgba(201,168,76,0.28); border-radius:20px; "
+        f"padding:0.18rem 0.8rem; font-family:DM Mono,monospace; font-size:0.58rem; "
+        f"letter-spacing:0.12em; text-transform:uppercase; color:#c9a84c; "
+        f"vertical-align:middle; margin-left:0.8rem;'>{job_title.strip()}</span>"
+        if job_title.strip() else ""
+    )
 
-                # ② Professional Summary — Before / After
-                if parsed["summary"]:
-                    st.markdown("""
-                    <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.18em;
-                                text-transform:uppercase; color:#c9a84c; margin-bottom:0.6rem;
-                                display:flex; align-items:center; gap:0.5rem;">
-                        <span style="display:inline-block;width:14px;height:1px;background:#c9a84c;"></span>
-                        ① Professional Summary
-                    </div>
-                    """, unsafe_allow_html=True)
+    st.markdown(f"""
+    <div style="margin-bottom:1.1rem;">
+        <div style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em;
+                    text-transform:uppercase; color:#c9a84c; margin-bottom:0.35rem;
+                    display:flex; align-items:center; gap:0.6rem;">
+            <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>Results
+        </div>
+        <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
+                    font-weight:300; color:#f0ede6; display:flex; align-items:center; flex-wrap:wrap;">
+            {"Full Resume Optimization" if is_combined else "Skills Gap Analysis"}{title_pill}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-                    sh1, sh2 = st.columns(2, gap="large")
-                    with sh1:
-                        st.markdown("""
-                        <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.16em;
-                                    text-transform:uppercase; color:#6a6560; padding:0.5rem 0.8rem;
-                                    background:#0b0c0f; border:1px solid rgba(255,255,255,0.06);
-                                    border-radius:4px 4px 0 0; text-align:center;">
-                            ✗ &nbsp; Before
-                        </div>""", unsafe_allow_html=True)
-                        st.markdown(
-                            f"<div style='background:#0d0e12; border:1px solid rgba(255,255,255,0.07);"
-                            f"border-top:none; padding:1.2rem 1.2rem; font-size:0.92rem;"
-                            f"color:#f0ede6; line-height:1.85;'>"
-                            f"{'<span style=\"color:#4a4845; font-style:italic;\">No existing summary found on resume.</span>' if not parsed['original_summary'] else parsed['original_summary']}"
-                            f"</div>",
-                            unsafe_allow_html=True
-                        )
-                    with sh2:
-                        st.markdown("""
-                        <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.16em;
-                                    text-transform:uppercase; color:#c9a84c; padding:0.5rem 0.8rem;
-                                    background:#0b0c0f; border:1px solid rgba(201,168,76,0.25);
-                                    border-radius:4px 4px 0 0; text-align:center;">
-                            ✦ &nbsp; After
-                        </div>""", unsafe_allow_html=True)
-                        st.markdown(
-                            f"<div style='background:#0d0e12; border:1px solid rgba(201,168,76,0.18);"
-                            f"border-top:none; border-left:3px solid #c9a84c;"
-                            f"padding:1.2rem 1.2rem; font-size:0.92rem;"
-                            f"color:#e8c87a; line-height:1.85;'>"
-                            f"<span style='color:#c9a84c; font-size:0.7rem;'>✦</span>"
-                            f"&nbsp;{parsed['summary']}</div>",
-                            unsafe_allow_html=True
-                        )
+    # ── COMBINED OPTIMIZATION UI ─────────────────────────────────────
+    if is_combined:
+        parsed = parse_combined_result(display_text)
 
-                    st.markdown("<br/>", unsafe_allow_html=True)
-                    sc1, _ = st.columns([1, 4])
-                    with sc1:
-                        st.download_button(
-                            "↓  Download Summary",
-                            data=parsed["summary"],
-                            file_name="professional_summary.txt",
-                            mime="text/plain",
-                            key="dl_summary"
-                        )
-                    st.markdown("<br/>", unsafe_allow_html=True)
+        # Header
+        st.markdown(f"""
+        <div style="margin-bottom:2rem;">
+            <div style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em;
+                        text-transform:uppercase; color:#c9a84c; margin-bottom:0.35rem;
+                        display:flex; align-items:center; gap:0.6rem;">
+                <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>
+                Full Resume Optimization
+            </div>
+            <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
+                        font-weight:300; color:#f0ede6; display:flex; align-items:center; flex-wrap:wrap;">
+                3 improvements applied{title_pill}
+            </div>
+            <p style="font-size:0.85rem; color:#9a958f; margin:0.4rem 0 0; line-height:1.7;">
+                New professional summary &nbsp;·&nbsp; ATS keywords identified
+                &nbsp;·&nbsp; {len(parsed['pairs'])} bullet{"s" if len(parsed['pairs']) != 1 else ""} rewritten
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
-                # ③ ATS Keywords
-                if parsed["keywords"]:
-                    st.markdown("""
-                    <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.18em;
-                                text-transform:uppercase; color:#c9a84c; margin-bottom:0.6rem;
-                                display:flex; align-items:center; gap:0.5rem;">
-                        <span style="display:inline-block;width:14px;height:1px;background:#c9a84c;"></span>
-                        ② Missing ATS Keywords to Add
-                    </div>
-                    """, unsafe_allow_html=True)
-                    pills_html = "".join([
-                        f"<span style='display:inline-block; background:rgba(201,168,76,0.09);"
-                        f"border:1px solid rgba(201,168,76,0.28); border-radius:20px;"
-                        f"padding:0.25rem 0.8rem; font-family:DM Mono,monospace; font-size:0.7rem;"
-                        f"color:#e8c87a; margin:0.2rem;'>{kw}</span>"
-                        for kw in parsed["keywords"]
-                    ])
+        # ① Summary Before / After
+        if parsed["summary"]:
+            st.markdown("""
+            <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.18em;
+                        text-transform:uppercase; color:#c9a84c; margin-bottom:0.6rem;
+                        display:flex; align-items:center; gap:0.5rem;">
+                <span style="display:inline-block;width:14px;height:1px;background:#c9a84c;"></span>
+                ① Professional Summary
+            </div>
+            """, unsafe_allow_html=True)
+            sh1, sh2 = st.columns(2, gap="large")
+            with sh1:
+                st.markdown("""<div style="font-family:'DM Mono',monospace; font-size:0.6rem;
+                    letter-spacing:0.16em; text-transform:uppercase; color:#6a6560;
+                    padding:0.5rem 0.8rem; background:#0b0c0f;
+                    border:1px solid rgba(255,255,255,0.06);
+                    border-radius:4px 4px 0 0; text-align:center;">✗ &nbsp; Before</div>""",
+                    unsafe_allow_html=True)
+                st.markdown(
+                    f"<div style='background:#0d0e12; border:1px solid rgba(255,255,255,0.07);"
+                    f"border-top:none; padding:1.2rem; font-size:0.92rem;"
+                    f"color:#f0ede6; line-height:1.85;'>"
+                    f"{'<span style=\"color:#4a4845;font-style:italic;\">No existing summary found.</span>' if not parsed['original_summary'] else parsed['original_summary']}"
+                    f"</div>", unsafe_allow_html=True)
+            with sh2:
+                st.markdown("""<div style="font-family:'DM Mono',monospace; font-size:0.6rem;
+                    letter-spacing:0.16em; text-transform:uppercase; color:#c9a84c;
+                    padding:0.5rem 0.8rem; background:#0b0c0f;
+                    border:1px solid rgba(201,168,76,0.25);
+                    border-radius:4px 4px 0 0; text-align:center;">✦ &nbsp; After</div>""",
+                    unsafe_allow_html=True)
+                st.markdown(
+                    f"<div style='background:#0d0e12; border:1px solid rgba(201,168,76,0.18);"
+                    f"border-top:none; border-left:3px solid #c9a84c;"
+                    f"padding:1.2rem; font-size:0.92rem; color:#e8c87a; line-height:1.85;'>"
+                    f"<span style='color:#c9a84c;font-size:0.7rem;'>✦</span>&nbsp;{parsed['summary']}</div>",
+                    unsafe_allow_html=True)
+            st.markdown("<br/>", unsafe_allow_html=True)
+            sc1, _ = st.columns([1, 4])
+            with sc1:
+                st.download_button("↓  Download Summary", data=parsed["summary"],
+                                   file_name="professional_summary.txt", mime="text/plain",
+                                   key="dl_summary")
+            st.markdown("<br/>", unsafe_allow_html=True)
+
+        # ② ATS Keywords
+        if parsed["keywords"]:
+            st.markdown("""
+            <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.18em;
+                        text-transform:uppercase; color:#c9a84c; margin-bottom:0.6rem;
+                        display:flex; align-items:center; gap:0.5rem;">
+                <span style="display:inline-block;width:14px;height:1px;background:#c9a84c;"></span>
+                ② Missing ATS Keywords to Add
+            </div>""", unsafe_allow_html=True)
+            pills_html = "".join([
+                f"<span style='display:inline-block; background:rgba(201,168,76,0.09);"
+                f"border:1px solid rgba(201,168,76,0.28); border-radius:20px;"
+                f"padding:0.25rem 0.8rem; font-family:DM Mono,monospace; font-size:0.7rem;"
+                f"color:#e8c87a; margin:0.2rem;'>{kw}</span>"
+                for kw in parsed["keywords"]
+            ])
+            st.markdown(
+                f"<div style='background:#111318; border:1px solid rgba(201,168,76,0.15);"
+                f"border-radius:6px; padding:1rem 1.2rem; margin-bottom:1.8rem;"
+                f"line-height:2.2;'>{pills_html}</div>", unsafe_allow_html=True)
+
+        # ③ Bullet Before/After
+        if parsed["pairs"]:
+            st.markdown(f"""
+            <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.18em;
+                        text-transform:uppercase; color:#c9a84c; margin-bottom:0.6rem;
+                        display:flex; align-items:center; gap:0.5rem;">
+                <span style="display:inline-block;width:14px;height:1px;background:#c9a84c;"></span>
+                ③ Bullet Rewrites — {len(parsed['pairs'])} total
+            </div>""", unsafe_allow_html=True)
+
+            h1, h2 = st.columns(2, gap="large")
+            with h1:
+                st.markdown("""<div style="font-family:'DM Mono',monospace; font-size:0.6rem;
+                    letter-spacing:0.16em; text-transform:uppercase; color:#6a6560;
+                    padding:0.5rem 0.8rem; background:#0b0c0f;
+                    border:1px solid rgba(255,255,255,0.06);
+                    border-radius:4px 4px 0 0; text-align:center;">✗ &nbsp; Before</div>""",
+                    unsafe_allow_html=True)
+            with h2:
+                st.markdown("""<div style="font-family:'DM Mono',monospace; font-size:0.6rem;
+                    letter-spacing:0.16em; text-transform:uppercase; color:#c9a84c;
+                    padding:0.5rem 0.8rem; background:#0b0c0f;
+                    border:1px solid rgba(201,168,76,0.25);
+                    border-radius:4px 4px 0 0; text-align:center;">✦ &nbsp; After</div>""",
+                    unsafe_allow_html=True)
+
+            for i, pair in enumerate(parsed["pairs"]):
+                c1, c2 = st.columns(2, gap="large")
+                bg_row = "#0d0e12" if i % 2 == 0 else "#111318"
+                with c1:
                     st.markdown(
-                        f"<div style='background:#111318; border:1px solid rgba(201,168,76,0.15);"
-                        f"border-radius:6px; padding:1rem 1.2rem; margin-bottom:1.8rem;"
-                        f"line-height:2.2;'>{pills_html}</div>",
-                        unsafe_allow_html=True
-                    )
+                        f"<div style='background:{bg_row}; border:1px solid rgba(255,255,255,0.07);"
+                        f"border-top:none; padding:0.85rem 1rem; font-size:0.88rem;"
+                        f"color:#f0ede6; line-height:1.7; min-height:60px;'>"
+                        f"<span style='color:#6a6560;font-size:0.75rem;'>—</span>"
+                        f"&nbsp;{pair['original']}</div>", unsafe_allow_html=True)
+                with c2:
+                    st.markdown(
+                        f"<div style='background:{bg_row}; border:1px solid rgba(201,168,76,0.18);"
+                        f"border-top:none; border-left:3px solid #c9a84c;"
+                        f"padding:0.85rem 1rem; font-size:0.88rem;"
+                        f"color:#e8c87a; line-height:1.7; min-height:60px;'>"
+                        f"<span style='color:#c9a84c;font-size:0.7rem;'>✦</span>"
+                        f"&nbsp;{pair['rewritten']}</div>", unsafe_allow_html=True)
 
-                # ④ Bullet Before/After
-                if parsed["pairs"]:
-                    st.markdown(f"""
-                    <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.18em;
-                                text-transform:uppercase; color:#c9a84c; margin-bottom:0.6rem;
-                                display:flex; align-items:center; gap:0.5rem;">
-                        <span style="display:inline-block;width:14px;height:1px;background:#c9a84c;"></span>
-                        ③ Bullet Rewrites — {len(parsed['pairs'])} total
-                    </div>
-                    """, unsafe_allow_html=True)
+            st.markdown("<br/>", unsafe_allow_html=True)
+            st.markdown("""
+            <div style="padding:1.2rem 1.5rem; background:rgba(201,168,76,0.06);
+                        border:1px solid rgba(201,168,76,0.2); border-radius:6px; margin-bottom:1rem;">
+                <div style="font-family:'DM Mono',monospace; font-size:0.62rem;
+                            letter-spacing:0.14em; text-transform:uppercase;
+                            color:#c9a84c; margin-bottom:0.4rem;">&#10022; Apply All Changes</div>
+                <p style="font-size:0.83rem; color:#9a958f; margin:0; line-height:1.7;">
+                    Click <strong style='color:#f0ede6;'>Apply &amp; Download</strong> to merge
+                    all rewritten bullets into your original resume and download the updated file.
+                </p>
+            </div>""", unsafe_allow_html=True)
 
-                    # Column headers
-                    h1, h2 = st.columns(2, gap="large")
-                    with h1:
-                        st.markdown("""
-                        <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.16em;
-                                    text-transform:uppercase; color:#6a6560; padding:0.5rem 0.8rem;
-                                    background:#0b0c0f; border:1px solid rgba(255,255,255,0.06);
-                                    border-radius:4px 4px 0 0; text-align:center;">
-                            ✗ &nbsp; Before
-                        </div>""", unsafe_allow_html=True)
-                    with h2:
-                        st.markdown("""
-                        <div style="font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.16em;
-                                    text-transform:uppercase; color:#c9a84c; padding:0.5rem 0.8rem;
-                                    background:#0b0c0f; border:1px solid rgba(201,168,76,0.25);
-                                    border-radius:4px 4px 0 0; text-align:center;">
-                            ✦ &nbsp; After
-                        </div>""", unsafe_allow_html=True)
+            if "updated_resume" not in st.session_state:
+                st.session_state.updated_resume = None
 
-                    for i, pair in enumerate(parsed["pairs"]):
-                        c1, c2 = st.columns(2, gap="large")
-                        bg_row = "#0d0e12" if i % 2 == 0 else "#111318"
-                        with c1:
-                            st.markdown(
-                                f"<div style='background:{bg_row}; border:1px solid rgba(255,255,255,0.07);"
-                                f"border-top:none; padding:0.85rem 1rem; font-size:0.88rem;"
-                                f"color:#f0ede6; line-height:1.7; min-height:60px;'>"
-                                f"<span style='color:#6a6560; font-size:0.75rem;'>—</span>"
-                                f"&nbsp;{pair['original']}</div>",
-                                unsafe_allow_html=True
-                            )
-                        with c2:
-                            st.markdown(
-                                f"<div style='background:{bg_row}; border:1px solid rgba(201,168,76,0.18);"
-                                f"border-top:none; border-left:3px solid #c9a84c;"
-                                f"padding:0.85rem 1rem; font-size:0.88rem;"
-                                f"color:#e8c87a; line-height:1.7; min-height:60px;'>"
-                                f"<span style='color:#c9a84c; font-size:0.7rem;'>✦</span>"
-                                f"&nbsp;{pair['rewritten']}</div>",
-                                unsafe_allow_html=True
-                            )
+            ac1, ac2, ac3, _ = st.columns([1.3, 1.2, 1.2, 3])
+            with ac1:
+                if st.button("✦  Apply Changes", type="primary", key="apply_bullets"):
+                    st.session_state.updated_resume = build_updated_resume(resume_text, parsed["pairs"])
+                    st.success(f"✓  {len(parsed['pairs'])} bullets applied.")
+            if st.session_state.updated_resume:
+                with ac2:
+                    st.download_button("↓  Download .txt",
+                                       data=st.session_state.updated_resume,
+                                       file_name="resume_updated.txt", mime="text/plain",
+                                       key="dl_updated_txt")
+                with ac3:
+                    st.download_button("↓  Download .doc",
+                                       data=st.session_state.updated_resume.replace("\n", "\r\n"),
+                                       file_name="resume_updated.doc",
+                                       mime="application/msword", key="dl_updated_doc")
 
-                    st.markdown("<br/>", unsafe_allow_html=True)
+        elif not parsed["summary"] and not parsed["keywords"]:
+            st.markdown(display_text)
+            st.markdown("<br/>", unsafe_allow_html=True)
+            dcol1, _ = st.columns([1, 4])
+            with dcol1:
+                st.download_button("↓  Download Analysis", data=display_text,
+                                   file_name="resume_analysis.txt", mime="text/plain")
 
-                    # Apply + Download
-                    st.markdown("""
-                    <div style="padding:1.2rem 1.5rem; background:rgba(201,168,76,0.06);
-                                border:1px solid rgba(201,168,76,0.2); border-radius:6px;
-                                margin-bottom:1rem;">
-                        <div style="font-family:'DM Mono',monospace; font-size:0.62rem;
-                                    letter-spacing:0.14em; text-transform:uppercase;
-                                    color:#c9a84c; margin-bottom:0.4rem;">&#10022; Apply All Changes</div>
-                        <p style="font-size:0.83rem; color:#9a958f; margin:0; line-height:1.7;">
-                            Click <strong style='color:#f0ede6;'>Apply &amp; Download</strong> to merge
-                            all rewritten bullets into your original resume and download the updated file.
-                        </p>
-                    </div>
-                    """, unsafe_allow_html=True)
+    # ── SKILLS GAP ───────────────────────────────────────────────────
+    else:
+        st.markdown(display_text)
+        st.markdown("<br/>", unsafe_allow_html=True)
+        dcol1, _ = st.columns([1, 4])
+        with dcol1:
+            st.download_button("↓  Download Analysis", data=display_text,
+                               file_name="skills_gap.txt", mime="text/plain")
 
-                    if "updated_resume" not in st.session_state:
-                        st.session_state.updated_resume = None
+    # ── COVER LETTER ─────────────────────────────────────────────────
+    if cover_letter_text:
+        st.markdown("<hr/>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style="margin-bottom:1.4rem;">
+            <div style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em;
+                        text-transform:uppercase; color:#c9a84c; margin-bottom:0.35rem;
+                        display:flex; align-items:center; gap:0.6rem;">
+                <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>Bonus
+            </div>
+            <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
+                        font-weight:300; color:#f0ede6; margin-bottom:0.4rem;">
+                Your Tailored Cover Letter
+            </div>
+            <p style="font-family:'DM Sans',sans-serif; font-size:0.85rem; color:#9a958f;
+                      font-weight:300; max-width:560px; line-height:1.7; margin:0;">
+                Written specifically for this role using your resume and the job description.
+                Edit freely before sending.
+            </p>
+        </div>""", unsafe_allow_html=True)
 
-                    ac1, ac2, ac3, _ = st.columns([1.3, 1.2, 1.2, 3])
-                    with ac1:
-                        if st.button("✦  Apply Changes", type="primary", key="apply_bullets"):
-                            st.session_state.updated_resume = build_updated_resume(resume_text, parsed["pairs"])
-                            st.success(f"✓  {len(parsed['pairs'])} bullets applied.")
-                    if st.session_state.updated_resume:
-                        with ac2:
-                            st.download_button(
-                                "↓  Download .txt",
-                                data=st.session_state.updated_resume,
-                                file_name="resume_updated.txt",
-                                mime="text/plain",
-                                key="dl_updated_txt"
-                            )
-                        with ac3:
-                            st.download_button(
-                                "↓  Download .doc",
-                                data=st.session_state.updated_resume.replace("\n", "\r\n"),
-                                file_name="resume_updated.doc",
-                                mime="application/msword",
-                                key="dl_updated_doc"
-                            )
+        st.markdown(f'<div class="cover-letter-box">{cover_letter_text}</div>', unsafe_allow_html=True)
+        st.markdown("<br/>", unsafe_allow_html=True)
 
-                # Fallback if parsing failed entirely
-                elif not parsed["summary"] and not parsed["keywords"] and not parsed["pairs"]:
-                    st.markdown(display_text)
-                    st.markdown("<br/>", unsafe_allow_html=True)
-                    dcol1, _ = st.columns([1, 4])
-                    with dcol1:
-                        st.download_button("↓  Download Analysis", data=display_text,
-                                           file_name="resume_analysis.txt", mime="text/plain")
+        cl1, cl2, _ = st.columns([1, 1, 3])
+        with cl1:
+            st.download_button("↓  Download .txt", data=cover_letter_text,
+                               file_name="cover_letter.txt", mime="text/plain", key="dl_cover_txt")
+        with cl2:
+            st.download_button("↓  Download .doc",
+                               data=cover_letter_text.replace("\n", "\r\n"),
+                               file_name="cover_letter.doc",
+                               mime="application/msword", key="dl_cover_doc")
 
-            # ── SKILLS GAP ───────────────────────────────────────────────
-            else:
-                st.markdown(f"""
-                <div style="margin-bottom:1.4rem;">
-                    <div style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em;
-                                text-transform:uppercase; color:#c9a84c; margin-bottom:0.35rem;
-                                display:flex; align-items:center; gap:0.6rem;">
-                        <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>Results
-                    </div>
-                    <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
-                                font-weight:300; color:#f0ede6; display:flex; align-items:center; flex-wrap:wrap;">
-                        Skills Gap Analysis{title_pill}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                st.markdown(display_text)
-                st.markdown("<br/>", unsafe_allow_html=True)
-                dcol1, _ = st.columns([1, 4])
-                with dcol1:
-                    st.download_button(
-                        "↓  Download Analysis", data=display_text,
-                        file_name="skills_gap.txt", mime="text/plain"
-                    )
-
-            # ── COVER LETTER ─────────────────────────────────────────────
-            if cover_letter_text:
-                st.markdown("<hr/>", unsafe_allow_html=True)
-
-                st.markdown("""
-                <div style="margin-bottom:1.4rem;">
-                    <div style="font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em;
-                                text-transform:uppercase; color:#c9a84c; margin-bottom:0.35rem;
-                                display:flex; align-items:center; gap:0.6rem;">
-                        <span style="display:inline-block;width:18px;height:1px;background:#c9a84c;"></span>Bonus
-                    </div>
-                    <div style="font-family:'Cormorant Garamond',serif; font-size:1.75rem;
-                                font-weight:300; color:#f0ede6; margin-bottom:0.4rem;">
-                        Your Tailored Cover Letter
-                    </div>
-                    <p style="font-family:'DM Sans',sans-serif; font-size:0.85rem; color:#9a958f;
-                              font-weight:300; max-width:560px; line-height:1.7; margin:0;">
-                        Written specifically for this role using your resume and the job description.
-                        Edit freely before sending.
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
-
-                st.markdown(f'<div class="cover-letter-box">{cover_letter_text}</div>', unsafe_allow_html=True)
-                st.markdown("<br/>", unsafe_allow_html=True)
-
-                cl1, cl2, _ = st.columns([1, 1, 3])
-                with cl1:
-                    st.download_button(
-                        "↓  Download .txt", data=cover_letter_text,
-                        file_name="cover_letter.txt", mime="text/plain", key="dl_cover_txt"
-                    )
-                with cl2:
-                    st.download_button(
-                        "↓  Download .doc", data=cover_letter_text.replace("\n", "\r\n"),
-                        file_name="cover_letter.doc", mime="application/msword", key="dl_cover_doc"
-                    )
-
-                st.markdown("""
-                <div style="margin-top:1rem; padding:0.9rem 1.2rem; background:rgba(201,168,76,0.05);
-                            border-left:2px solid rgba(201,168,76,0.4); border-radius:0 4px 4px 0;">
-                    <span style="font-family:'DM Mono',monospace; font-size:0.62rem;
-                                 letter-spacing:0.14em; text-transform:uppercase; color:#c9a84c;">&#10022; Tip</span>
-                    <p style="font-family:'DM Sans',sans-serif; font-size:0.82rem; color:#9a958f;
-                              margin:0.3rem 0 0; line-height:1.7;">
-                        Personalise the opening line with the hiring manager's name if you can find it on LinkedIn.
-                        A named salutation can increase response rates by up to 20%.
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
+        st.markdown("""
+        <div style="margin-top:1rem; padding:0.9rem 1.2rem; background:rgba(201,168,76,0.05);
+                    border-left:2px solid rgba(201,168,76,0.4); border-radius:0 4px 4px 0;">
+            <span style="font-family:'DM Mono',monospace; font-size:0.62rem;
+                         letter-spacing:0.14em; text-transform:uppercase; color:#c9a84c;">&#10022; Tip</span>
+            <p style="font-family:'DM Sans',sans-serif; font-size:0.82rem; color:#9a958f;
+                      margin:0.3rem 0 0; line-height:1.7;">
+                Personalise the opening line with the hiring manager's name if you can find it on LinkedIn.
+                A named salutation can increase response rates by up to 20%.
+            </p>
+        </div>""", unsafe_allow_html=True)
