@@ -265,14 +265,13 @@ def _sb_headers():
 
 
 def track(event: str):
-    """Write event to Supabase AND immediately increment local session state counts."""
-    # Always update local counts immediately — no race condition
-    if "sb_counts" in st.session_state:
-        st.session_state.sb_counts[event] = (
-            st.session_state.sb_counts.get(event, 0) + 1
-        )
+    """Write event to Supabase AND store in pending so sidebar shows it immediately."""
     if not ANALYTICS_ON:
         return
+    # Store locally so it shows instantly before Supabase propagates
+    pending = st.session_state.get("pending_counts", {})
+    pending[event] = pending.get(event, 0) + 1
+    st.session_state.pending_counts = pending
     try:
         requests.post(
             f"{SUPABASE_URL}/rest/v1/analytics",
@@ -285,28 +284,28 @@ def track(event: str):
 
 
 def get_counts() -> dict:
-    """Fetch all-time counts from Supabase (called once per session to seed local state)."""
-    if not ANALYTICS_ON:
-        return {}
-    try:
-        resp = requests.get(
-            f"{SUPABASE_URL}/rest/v1/analytics?select=event",
-            headers={**_sb_headers(), "Prefer": ""},
-            timeout=4
-        )
-        rows = resp.json()
-        counts = {}
-        for row in rows:
-            e = row.get("event", "")
-            counts[e] = counts.get(e, 0) + 1
-        return counts
-    except Exception:
-        return {}
+    """Fetch fresh counts from Supabase and merge any locally pending increments."""
+    base = {}
+    if ANALYTICS_ON:
+        try:
+            resp = requests.get(
+                f"{SUPABASE_URL}/rest/v1/analytics?select=event",
+                headers={**_sb_headers(), "Prefer": ""},
+                timeout=4
+            )
+            for row in resp.json():
+                e = row.get("event", "")
+                base[e] = base.get(e, 0) + 1
+        except Exception:
+            pass
 
+    # Merge pending local increments that may not be in Supabase yet
+    pending = st.session_state.get("pending_counts", {})
+    for event, delta in pending.items():
+        base[event] = base.get(event, 0) + delta
 
-# ── Seed local counts from Supabase once per session ─────────────────
-if "sb_counts" not in st.session_state:
-    st.session_state.sb_counts = get_counts()
+    return base
+
 
 if "visited" not in st.session_state:
     st.session_state.visited = True
@@ -361,10 +360,10 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     if ANALYTICS_ON:
-        counts        = st.session_state.sb_counts          # always current — updated instantly by track()
-        total_visits  = counts.get(EV_VISIT,   0)
-        total_runs    = counts.get(EV_RUN,      0)
-        cover_count   = counts.get(EV_COVER,    0)
+        counts        = get_counts()   # fresh from Supabase + pending local increments
+        total_visits  = counts.get(EV_VISIT,  0)
+        total_runs    = counts.get(EV_RUN,     0)
+        cover_count   = counts.get(EV_COVER,   0)
 
         # Combined count includes new event + legacy events from before the rename
         combined_count = (
@@ -910,6 +909,9 @@ if run:
 
 # ── Display stored results (persists across reruns) ───────────────────
 if st.session_state.get("analysis_result"):
+    # Clear pending once we're on the display render — Supabase has had time to commit
+    if st.session_state.get("pending_counts"):
+        st.session_state.pending_counts = {}
     res          = st.session_state.analysis_result
     result       = res["result"]
     cover_letter_text = res["cover_letter_text"]
