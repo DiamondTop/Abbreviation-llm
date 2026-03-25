@@ -211,7 +211,7 @@ def extract_text(file) -> tuple[str, str]:
 
 
 def format_for_display(text: str) -> str:
-    html.escape(text, quote=False)
+    escaped = html.escape(text, quote=False)
     return f"""
     <pre style="
         white-space: pre-wrap;
