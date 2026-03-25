@@ -212,11 +212,15 @@ def extract_text(file) -> tuple[str, str]:
 
 def format_for_display(text: str) -> str:
     escaped = html.escape(text)
-    paragraphs = re.split(r'\n{2,}', escaped.strip())
-    return "".join(
-        f"<p>{para.replace(chr(10), '<br>')}</p>"
-        for para in paragraphs
-    )
+    return f"""
+    <pre style="
+        white-space: pre-wrap;
+        font-family: 'DM Mono', monospace;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        margin: 0;
+    ">{escaped}</pre>
+    """
 
 
 def elapsed_label(seconds: float) -> str:
