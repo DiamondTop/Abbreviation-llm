@@ -264,23 +264,31 @@ def _sb_headers():
     }
 
 
-@st.cache_data(ttl=2)  # Reduced from 5 to 2 seconds for more frequent updates
+# -----------------------------------------------------------------
+# Cached Supabase GET – ttl=0 means “no caching while we debug”.
+# Switch to ttl=2 (or higher) once you’re confident it works.
+# -----------------------------------------------------------------
+@st.cache_data(ttl=0)          # ← set to 0 for debugging; change to 2 later
 def _fetch_supabase_counts() -> dict:
-    """Fetch raw counts from Supabase (cached)"""
-    base = {}
-    if ANALYTICS_ON:
-        try:
-            resp = requests.get(
-                f"{SUPABASE_URL}/rest/v1/analytics?select=event",
-                headers={**_sb_headers(), "Prefer": ""},
-                timeout=4
-            )
-            for row in resp.json():
-                e = row.get("event", "")
-                base[e] = base.get(e, 0) + 1
-        except Exception:
-            pass
-    return base
+    """Pull raw counts from Supabase (no caching while ttl=0)."""
+    if not ANALYTICS_ON:
+        return {}
+    try:
+        resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/analytics?select=event",
+            headers={**_sb_headers(), "Prefer": ""},
+            timeout=4
+        )
+        resp.raise_for_status()
+        counts = {}
+        for row in resp.json():
+            e = row.get("event", "")
+            counts[e] = counts.get(e, 0) + 1
+        return counts
+    except Exception as exc:
+        # Show a non‑intrusive toast so you know the request failed.
+        st.toast(f"Supabase GET error: {exc}", icon="⚠️")
+        return {}
 
 def track(event: str):
     """Write event to Supabase AND store in pending so sidebar shows it immediately."""
@@ -292,25 +300,28 @@ def track(event: str):
     pending[event] = pending.get(event, 0) + 1
     st.session_state.pending_counts = pending
 
+    # ---- fire‑and‑forget POST ----------------------------------------------------
     try:
-        requests.post(
+        r = requests.post(
             f"{SUPABASE_URL}/rest/v1/analytics",
             json={"event": event},
             headers=_sb_headers(),
             timeout=3
         )
-        # Clear cache to force fresh fetch on next read
+        r.raise_for_status()
+        # Force a fresh GET on the next read
         _fetch_supabase_counts.clear()
-    except Exception:
-        pass
+    except Exception as exc:
+        # We still keep the optimistic increment; the toast tells you why
+        # the Supabase number may lag behind.
+        st.toast(f"Supabase POST error: {exc}", icon="❌")
 
 
 def get_counts() -> dict:
-    """Get counts with pending local increments"""
-    base = _fetch_supabase_counts()  # Cached but frequently refreshed
-    pending = st.session_state.get("pending_counts", {})
-    for event, delta in pending.items():
-        base[event] = base.get(event, 0) + delta
+    """Return Supabase counts + any locally‑pending increments."""
+    base = _fetch_supabase_counts()          # fresh (or cached) Supabase data    pending = st.session_state.get("pending_counts", {})
+    for ev, delta in pending.items():
+        base[ev] = base.get(ev, 0) + delta
     return base
 
 
