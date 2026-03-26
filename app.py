@@ -291,16 +291,18 @@ def _fetch_supabase_counts() -> dict:
         return {}
 
 def track(event: str):
-    """Write event to Supabase AND store in pending so sidebar shows it immediately."""
+    """Write event to Supabase AND store locally for instant UI update."""
     if not ANALYTICS_ON:
         return
 
-    # Store locally so it shows instantly before Supabase propagates
-    pending = st.session_state.get("pending_counts", {})
+    # ----- optimistic local update -----
+    pending = st.session_state.get("pending_counts")
+    if not isinstance(pending, dict):
+        pending = {}                     # reset to a clean dict if it got corrupted
     pending[event] = pending.get(event, 0) + 1
-    st.session_state.pending_counts = pending
+    st.session_state.pending_counts = pending   # guaranteed to be a dict now
 
-    # ---- fire‑and‑forget POST ----------------------------------------------------
+    # ----- fire‑and‑forget POST -----
     try:
         r = requests.post(
             f"{SUPABASE_URL}/rest/v1/analytics",
@@ -309,17 +311,21 @@ def track(event: str):
             timeout=3
         )
         r.raise_for_status()
-        # Force a fresh GET on the next read
-        _fetch_supabase_counts.clear()
+        _fetch_supabase_counts.clear()   # force fresh GET on next read
     except Exception as exc:
-        # We still keep the optimistic increment; the toast tells you why
-        # the Supabase number may lag behind.
+        # Show a non‑intrusive toast so you know why the Supabase number may lag.
         st.toast(f"Supabase POST error: {exc}", icon="❌")
 
 
 def get_counts() -> dict:
     """Return Supabase counts + any locally‑pending increments."""
-    base = _fetch_supabase_counts()          # fresh (or cached) Supabase data    pending = st.session_state.get("pending_counts", {})
+    base = _fetch_supabase_counts()          # fresh Supabase data
+
+    # Grab whatever is in session state; if it isn’t a dict, treat it as empty.
+    pending = st.session_state.get("pending_counts")
+    if not isinstance(pending, dict):
+        pending = {}
+
     for ev, delta in pending.items():
         base[ev] = base.get(ev, 0) + delta
     return base
