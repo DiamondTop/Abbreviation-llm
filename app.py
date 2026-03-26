@@ -908,8 +908,7 @@ if run:
             track(EV_COMBINED if is_combined else EV_GAP)
             if cover_letter_text:
                 track(EV_COVER)
-            # <-- NEW: make the whole app (including the sidebar) refresh now
-            st.rerun()
+            
             
             st.session_state.analysis_result = {
                 "result":             result,
@@ -920,7 +919,11 @@ if run:
                 "provider":           PROVIDER,
             }
             st.session_state.updated_resume = None   # reset any previous apply
-
+            # 3️⃣ Force a fresh read from Supabase (optional but tidy)
+            _fetch_supabase_counts.clear()
+        
+            # 4️⃣ Now rerun – this is the **last** thing we do
+            st.rerun()
 
 # ── Display stored results (persists across reruns) ───────────────────
 if st.session_state.get("analysis_result"):
