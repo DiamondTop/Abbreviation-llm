@@ -282,9 +282,9 @@ def track(event: str):
     except Exception:
         pass
 
-
-def get_counts() -> dict:
-    """Fetch fresh counts from Supabase and merge any locally pending increments."""
+@st.cache_data(ttl=5)  # Cache for 5 seconds
+def _fetch_supabase_counts() -&gt; dict:
+    """Fetch raw counts from Supabase (cached)"""
     base = {}
     if ANALYTICS_ON:
         try:
@@ -298,13 +298,17 @@ def get_counts() -> dict:
                 base[e] = base.get(e, 0) + 1
         except Exception:
             pass
+    return base
 
-    # Merge pending local increments that may not be in Supabase yet
+def get_counts() -&gt; dict:
+    """Get counts with pending local increments"""
+    base = _fetch_supabase_counts()  # Cached!
     pending = st.session_state.get("pending_counts", {})
     for event, delta in pending.items():
         base[event] = base.get(event, 0) + delta
-
     return base
+
+
 
 
 if "visited" not in st.session_state:
@@ -527,16 +531,22 @@ def call_llm(system_task, user_content, add_score=True):
     try:
         if "Gemini" not in PROVIDER:
             r = client.chat.completions.create(
-                model=MODEL_NAME, temperature=0.4,
+                model=MODEL_NAME, 
+                temperature=0.4,
                 messages=[
                     {"role": "system", "content": system_task + scoring_instruction},
                     {"role": "user",   "content": user_content}
-                ]
+                ],
+                timeout=30  # ⚠️ ADD 30-SECOND TIMEOUT
             )
             return r.choices[0].message.content.strip()
         else:
-            r = gemini_model.generate_content(f"{system_task}{scoring_instruction}\n\n{user_content}")
+
+            r = gemini_model.generate_content(
+                f"{system_task}{scoring_instruction}\n\n{user_content}"
+            )
             return r.text.strip()
+            
     except Exception as e:
         st.error(f"LLM Error: {e}")
         return ""
