@@ -211,7 +211,6 @@ def extract_text(file) -> tuple[str, str]:
 
 
 def format_for_display(text: str) -> str:
-    escaped = html.escape(text, quote=False)
     return f"""
     <pre style="
         white-space: pre-wrap;
@@ -219,7 +218,7 @@ def format_for_display(text: str) -> str:
         font-size: 0.9rem;
         line-height: 1.6;
         margin: 0;
-    ">{escaped}</pre>
+    ">{text}</pre>
     """
 
 
