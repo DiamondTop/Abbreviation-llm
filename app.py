@@ -295,26 +295,31 @@ def track(event: str):
     if not ANALYTICS_ON:
         return
 
-    # ----- optimistic local update -----
+    # ---------- optimistic local update ----------
     pending = st.session_state.get("pending_counts")
     if not isinstance(pending, dict):
-        pending = {}                     # reset to a clean dict if it got corrupted
+        pending = {}                     # safety‑net – reset to a clean dict
     pending[event] = pending.get(event, 0) + 1
     st.session_state.pending_counts = pending   # guaranteed to be a dict now
 
-    # ----- fire‑and‑forget POST -----
+    # ---------- fire‑and‑forget POST ----------
     try:
         r = requests.post(
             f"{SUPABASE_URL}/rest/v1/analytics",
             json={"event": event},
             headers=_sb_headers(),
-            timeout=3
+            timeout=4          # a few seconds is plenty
         )
-        r.raise_for_status()
-        _fetch_supabase_counts.clear()   # force fresh GET on next read
+        # If Supabase returns anything other than 2xx we raise        r.raise_for_status()
+        # Force a fresh GET on the next read
+        _fetch_supabase_counts.clear()
+        st.toast(f"✅ Tracked `{event}`", icon="✅")
     except Exception as exc:
-        # Show a non‑intrusive toast so you know why the Supabase number may lag.
-        st.toast(f"Supabase POST error: {exc}", icon="❌")
+        # Show the exact error so you know *why* Supabase rejected the request
+        st.toast(f"❌ Supabase POST error: {exc}", icon="❌")
+        # Optional: dump the raw response for deeper inspection
+        if 'r' in locals() and r is not None:
+            st.sidebar.text(f"Supabase response: {r.status_code} {r.text}")
 
 
 def get_counts() -> dict:
