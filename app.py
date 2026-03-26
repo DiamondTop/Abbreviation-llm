@@ -243,6 +243,12 @@ SUPABASE_URL = st.secrets.get("supabase", {}).get("url", "")
 SUPABASE_KEY = st.secrets.get("supabase", {}).get("key", "")
 ANALYTICS_ON = bool(SUPABASE_URL and SUPABASE_KEY)
 
+
+st.sidebar.markdown("### 🔐 Supabase debug")
+st.sidebar.text(f"URL: {SUPABASE_URL or '(empty)'}")
+st.sidebar.text(f"Key: {SUPABASE_KEY[:8] + '…' if SUPABASE_KEY else '(empty)'}")
+st.sidebar.text(f"ANALYTICS_ON: {ANALYTICS_ON}")
+
 EV_VISIT = "visit"
 EV_RUN   = "run"
 EV_COMBINED = "goal_combined"
