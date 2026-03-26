@@ -264,26 +264,8 @@ def _sb_headers():
     }
 
 
-def track(event: str):
-    """Write event to Supabase AND store in pending so sidebar shows it immediately."""
-    if not ANALYTICS_ON:
-        return
-    # Store locally so it shows instantly before Supabase propagates
-    pending = st.session_state.get("pending_counts", {})
-    pending[event] = pending.get(event, 0) + 1
-    st.session_state.pending_counts = pending
-    try:
-        requests.post(
-            f"{SUPABASE_URL}/rest/v1/analytics",
-            json={"event": event},
-            headers=_sb_headers(),
-            timeout=3
-        )
-    except Exception:
-        pass
-
-@st.cache_data(ttl=5)  # Cache for 5 seconds
-def _fetch_supabase_counts() -&gt; dict:
+@st.cache_data(ttl=2)  # Reduced from 5 to 2 seconds for more frequent updates
+def _fetch_supabase_counts() -> dict:
     """Fetch raw counts from Supabase (cached)"""
     base = {}
     if ANALYTICS_ON:
@@ -300,15 +282,36 @@ def _fetch_supabase_counts() -&gt; dict:
             pass
     return base
 
-def get_counts() -&gt; dict:
+def track(event: str):
+    """Write event to Supabase AND store in pending so sidebar shows it immediately."""
+    if not ANALYTICS_ON:
+        return
+
+    # Store locally so it shows instantly before Supabase propagates
+    pending = st.session_state.get("pending_counts", {})
+    pending[event] = pending.get(event, 0) + 1
+    st.session_state.pending_counts = pending
+
+    try:
+        requests.post(
+            f"{SUPABASE_URL}/rest/v1/analytics",
+            json={"event": event},
+            headers=_sb_headers(),
+            timeout=3
+        )
+        # Clear cache to force fresh fetch on next read
+        _fetch_supabase_counts.clear()
+    except Exception:
+        pass
+
+
+def get_counts() -> dict:
     """Get counts with pending local increments"""
-    base = _fetch_supabase_counts()  # Cached!
+    base = _fetch_supabase_counts()  # Cached but frequently refreshed
     pending = st.session_state.get("pending_counts", {})
     for event, delta in pending.items():
         base[event] = base.get(event, 0) + delta
     return base
-
-
 
 
 if "visited" not in st.session_state:
@@ -916,12 +919,14 @@ if run:
             }
             st.session_state.updated_resume = None   # reset any previous apply
             st.rerun()
+            
+            # Add cache refresh to ensure sidebar updates immediately:
+            _fetch_supabase_counts.clear()
 
 # ── Display stored results (persists across reruns) ───────────────────
 if st.session_state.get("analysis_result"):
     # Clear pending once we're on the display render — Supabase has had time to commit
-    if st.session_state.get("pending_counts"):
-        st.session_state.pending_counts = {}
+    
     res          = st.session_state.analysis_result
     result       = res["result"]
     cover_letter_text = res["cover_letter_text"]
