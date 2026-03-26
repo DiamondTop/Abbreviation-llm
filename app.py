@@ -908,7 +908,9 @@ if run:
             track(EV_COMBINED if is_combined else EV_GAP)
             if cover_letter_text:
                 track(EV_COVER)
-
+            # <-- NEW: make the whole app (including the sidebar) refresh now
+            st.rerun()
+            
             st.session_state.analysis_result = {
                 "result":             result,
                 "cover_letter_text":  cover_letter_text,
