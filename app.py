@@ -918,10 +918,7 @@ if run:
                 "provider":           PROVIDER,
             }
             st.session_state.updated_resume = None   # reset any previous apply
-            st.rerun()
-            
-            # Add cache refresh to ensure sidebar updates immediately:
-            _fetch_supabase_counts.clear()
+
 
 # ── Display stored results (persists across reruns) ───────────────────
 if st.session_state.get("analysis_result"):
