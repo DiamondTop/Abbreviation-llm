@@ -360,7 +360,7 @@ with st.sidebar:
         [
             "Step-3.5-Flash (StepFun · Recommended)",
             "Nemo via Nvidia",
-            "Closed-source (Gemini) via Google"
+            "MiniMax"
         ]
     )
 
@@ -499,6 +499,7 @@ with st.sidebar:
 model_map = {
     "Step-3.5-Flash (StepFun · Recommended)": "stepfun/step-3.5-flash:free",
     "Nemo via Nvidia":                         "nvidia/nemotron-3-super-120b-a12b:free",
+    "MiniMax": "minimax/minimax-m2.5:free"
 }
 
 if "Gemini" not in PROVIDER:
