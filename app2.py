@@ -309,7 +309,7 @@ with st.sidebar:
     st.markdown("### ✦ Settings")
     PROVIDER = st.selectbox(
         "Reasoning Engine",
-        ["Arcee-AI (Reasoning Expert)", "nemotron-3 by Nvidia (Logic Focused)", "Stepfun"]
+        ["MiniMax (Reasoning Expert)", "nemotron-3 by Nvidia (Logic Focused)", "Stepfun"]
     )
     st.markdown("---")
     st.markdown("**Attach Context Files**")
