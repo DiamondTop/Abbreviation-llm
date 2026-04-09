@@ -255,8 +255,8 @@ def get_llm_response(history: list, file_context: str, provider: str) -> tuple[s
             model_id = "minimax/minimax-m2.5:free"
         elif "nemotron-3 by Nvidia" in provider:
             model_id = "nvidia/nemotron-3-super-120b-a12b:free"
-        elif "Stepfun" in provider:
-            model_id = "stepfun/step-3.5-flash:free"
+        elif "Gemma" in provider:
+            model_id = "google/gemma-4-26b-a4b-it:free"
         else:
             model_id = "meta-llama/llama-3.1-8b-instruct:free"
 
@@ -309,7 +309,7 @@ with st.sidebar:
     st.markdown("### ✦ Settings")
     PROVIDER = st.selectbox(
         "Reasoning Engine",
-        ["MiniMax (Reasoning Expert)", "nemotron-3 by Nvidia (Logic Focused)", "Stepfun"]
+        ["MiniMax (Reasoning Expert)", "nemotron-3 by Nvidia (Logic Focused)", "Gemma"]
     )
     st.markdown("---")
     st.markdown("**Attach Context Files**")
