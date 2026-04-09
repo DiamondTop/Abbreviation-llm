@@ -251,8 +251,8 @@ def get_llm_response(history: list, file_context: str, provider: str) -> tuple[s
             base_url="https://openrouter.ai/api/v1"
         )
 
-        if "Arcee-AI" in provider:
-            model_id = "arcee-ai/trinity-large-preview:free"
+        if "MiniMax" in provider:
+            model_id = "minimax/minimax-m2.5:free"
         elif "nemotron-3 by Nvidia" in provider:
             model_id = "nvidia/nemotron-3-super-120b-a12b:free"
         elif "Stepfun" in provider:
