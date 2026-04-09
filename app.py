@@ -264,20 +264,15 @@ def _sb_headers():
     }
 
 
-# -----------------------------------------------------------------
-# Cached Supabase GET – ttl=0 means “no caching while we debug”.
-# Switch to ttl=2 (or higher) once you’re confident it works.
-# -----------------------------------------------------------------
-@st.cache_data(ttl=0)          # ← set to 0 for debugging; change to 2 later
 def _fetch_supabase_counts() -> dict:
-    """Pull raw counts from Supabase (no caching while ttl=0)."""
+    """Pull raw event counts directly from Supabase."""
     if not ANALYTICS_ON:
         return {}
     try:
         resp = requests.get(
             f"{SUPABASE_URL}/rest/v1/analytics?select=event",
             headers={**_sb_headers(), "Prefer": ""},
-            timeout=4
+            timeout=5
         )
         resp.raise_for_status()
         counts = {}
@@ -285,57 +280,36 @@ def _fetch_supabase_counts() -> dict:
             e = row.get("event", "")
             counts[e] = counts.get(e, 0) + 1
         return counts
-    except Exception as exc:
-        # Show a non‑intrusive toast so you know the request failed.
-        st.toast(f"Supabase GET error: {exc}", icon="⚠️")
+    except Exception:
         return {}
 
-def track(event: str):
-    """Write event to Supabase AND store locally for instant UI update."""
+
+def track(event: str) -> bool:
+    """Write event to Supabase and update local session counts. Returns True on success."""
+    # Always update local state immediately so sidebar reflects it this render
+    if "counts" in st.session_state:
+        st.session_state.counts[event] = st.session_state.counts.get(event, 0) + 1
+
     if not ANALYTICS_ON:
-        return
-
-    # ---------- optimistic local update ----------
-    pending = st.session_state.get("pending_counts")
-    if not isinstance(pending, dict):
-        pending = {}                     # safety‑net – reset to a clean dict
-    pending[event] = pending.get(event, 0) + 1
-    st.session_state.pending_counts = pending   # guaranteed to be a dict now
-
-    # ---------- fire‑and‑forget POST ----------
+        return True
     try:
-        r = requests.post(
+        resp = requests.post(
             f"{SUPABASE_URL}/rest/v1/analytics",
             json={"event": event},
             headers=_sb_headers(),
-            timeout=4          # a few seconds is plenty
+            timeout=5
         )
-        # If Supabase returns anything other than 2xx we raise        r.raise_for_status()
-        # Force a fresh GET on the next read
-        _fetch_supabase_counts.clear()
-        st.toast(f"✅ Tracked `{event}`", icon="✅")
-    except Exception as exc:
-        # Show the exact error so you know *why* Supabase rejected the request
-        st.toast(f"❌ Supabase POST error: {exc}", icon="❌")
-        # Optional: dump the raw response for deeper inspection
-        if 'r' in locals() and r is not None:
-            st.sidebar.text(f"Supabase response: {r.status_code} {r.text}")
+        resp.raise_for_status()
+        return True
+    except Exception:
+        return False
 
 
-def get_counts() -> dict:
-    """Return Supabase counts + any locally‑pending increments."""
-    base = _fetch_supabase_counts()          # fresh Supabase data
+# ── Seed local counts from Supabase ONCE per browser session ─────────
+if "counts" not in st.session_state:
+    st.session_state.counts = _fetch_supabase_counts()
 
-    # Grab whatever is in session state; if it isn’t a dict, treat it as empty.
-    pending = st.session_state.get("pending_counts")
-    if not isinstance(pending, dict):
-        pending = {}
-
-    for ev, delta in pending.items():
-        base[ev] = base.get(ev, 0) + delta
-    return base
-
-
+# ── Track first visit (once per session) ─────────────────────────────
 if "visited" not in st.session_state:
     st.session_state.visited = True
     track(EV_VISIT)
@@ -360,7 +334,7 @@ with st.sidebar:
         [
             "Step-3.5-Flash (StepFun · Recommended)",
             "Nemo via Nvidia",
-            "MiniMax"
+            "Closed-source (Gemini) via Google"
         ]
     )
 
@@ -389,10 +363,10 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     if ANALYTICS_ON:
-        counts        = get_counts()   # fresh from Supabase + pending local increments
-        total_visits  = counts.get(EV_VISIT,  0)
-        total_runs    = counts.get(EV_RUN,     0)
-        cover_count   = counts.get(EV_COVER,   0)
+        counts         = st.session_state.counts   # seeded from Supabase, updated by track()
+        total_visits   = counts.get(EV_VISIT,  0)
+        total_runs     = counts.get(EV_RUN,     0)
+        cover_count    = counts.get(EV_COVER,   0)
 
         # Combined count includes new event + legacy events from before the rename
         combined_count = (
@@ -499,7 +473,6 @@ with st.sidebar:
 model_map = {
     "Step-3.5-Flash (StepFun · Recommended)": "stepfun/step-3.5-flash:free",
     "Nemo via Nvidia":                         "nvidia/nemotron-3-super-120b-a12b:free",
-    "MiniMax": "minimax/minimax-m2.5:free"
 }
 
 if "Gemini" not in PROVIDER:
@@ -557,22 +530,16 @@ def call_llm(system_task, user_content, add_score=True):
     try:
         if "Gemini" not in PROVIDER:
             r = client.chat.completions.create(
-                model=MODEL_NAME, 
-                temperature=0.4,
+                model=MODEL_NAME, temperature=0.4,
                 messages=[
                     {"role": "system", "content": system_task + scoring_instruction},
                     {"role": "user",   "content": user_content}
-                ],
-                timeout=30  # ⚠️ ADD 30-SECOND TIMEOUT
+                ]
             )
             return r.choices[0].message.content.strip()
         else:
-
-            r = gemini_model.generate_content(
-                f"{system_task}{scoring_instruction}\n\n{user_content}"
-            )
+            r = gemini_model.generate_content(f"{system_task}{scoring_instruction}\n\n{user_content}")
             return r.text.strip()
-            
     except Exception as e:
         st.error(f"LLM Error: {e}")
         return ""
@@ -931,8 +898,7 @@ if run:
             track(EV_COMBINED if is_combined else EV_GAP)
             if cover_letter_text:
                 track(EV_COVER)
-            
-            
+
             st.session_state.analysis_result = {
                 "result":             result,
                 "cover_letter_text":  cover_letter_text,
@@ -941,17 +907,17 @@ if run:
                 "job_title":          job_title,
                 "provider":           PROVIDER,
             }
-            st.session_state.updated_resume = None   # reset any previous apply
-            # 3️⃣ Force a fresh read from Supabase (optional but tidy)
-            _fetch_supabase_counts.clear()
-        
-            # 4️⃣ Now rerun – this is the **last** thing we do
+            st.session_state.updated_resume = None
+            # Brief pause so Supabase finishes committing before we rerun
+            _time.sleep(0.8)
+            # Re-seed counts so sidebar shows updated numbers immediately after rerun
+            st.session_state.counts = _fetch_supabase_counts()
             st.rerun()
 
 # ── Display stored results (persists across reruns) ───────────────────
 if st.session_state.get("analysis_result"):
-    # Clear pending once we're on the display render — Supabase has had time to commit
-    
+    if st.session_state.get("pending_counts"):
+        st.session_state.pending_counts = {}
     res          = st.session_state.analysis_result
     result       = res["result"]
     cover_letter_text = res["cover_letter_text"]
