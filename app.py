@@ -332,7 +332,7 @@ with st.sidebar:
     PROVIDER = st.selectbox(
         "LLM Engine",
         [
-            "Step-3.5-Flash (StepFun · Recommended)",
+            "OpenAI · Recommended)",
             "Nemo via Nvidia",
             "MiniMax"
         ]
@@ -471,7 +471,7 @@ with st.sidebar:
 # CLIENT SETUP
 # ==============================
 model_map = {
-    "Step-3.5-Flash (StepFun · Recommended)": "stepfun/step-3.5-flash:free",
+    "OpenAI · Recommended)": "openai/gpt-oss-120b:free",
     "Nemo via Nvidia":                         "nvidia/nemotron-3-super-120b-a12b:free",
     "MiniMax":    "minimax/minimax-m2.5:free"
 }
