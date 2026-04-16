@@ -306,7 +306,7 @@ def track(event: str) -> bool:
 
 
 # ── Seed local counts from Supabase ONCE per browser session ─────────
-if st.button("🔄 Refresh Analytics"):
+if "counts" not in st.session_state:
     st.session_state.counts = _fetch_supabase_counts()
 
 # ── Track first visit (once per session) ─────────────────────────────
