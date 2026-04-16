@@ -306,7 +306,7 @@ def track(event: str) -> bool:
 
 
 # ── Seed local counts from Supabase ONCE per browser session ─────────
-if "counts" not in st.session_state:
+if st.button("🔄 Refresh Analytics"):
     st.session_state.counts = _fetch_supabase_counts()
 
 # ── Track first visit (once per session) ─────────────────────────────
@@ -337,7 +337,7 @@ components.html("""
 if "visited" not in st.session_state:
     st.session_state.visited = True
     if st.query_params.get("_v") == "1":
-        track(EV_VISIT)
+        #track(EV_VISIT)
         # Strip the param so reruns don't double-count
         clean = dict(st.query_params)
         clean.pop("_v", None)
