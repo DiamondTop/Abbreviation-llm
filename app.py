@@ -310,9 +310,38 @@ if "counts" not in st.session_state:
     st.session_state.counts = _fetch_supabase_counts()
 
 # ── Track first visit (once per session) ─────────────────────────────
+import streamlit.components.v1 as components
+
+# Inject JS: checks localStorage, sets ?_v=1 in URL only on genuine new visits (24h window)
+components.html("""
+<script>
+(function() {
+    const KEY  = 'rf_last_visit';
+    const now  = Date.now();
+    const last = parseInt(localStorage.getItem(KEY) || '0');
+    const TTL  = 24 * 60 * 60 * 1000;   // 24-hour cooldown per browser
+
+    if (now - last > TTL) {
+        localStorage.setItem(KEY, now);
+        const url = new URL(window.parent.location.href);
+        if (url.searchParams.get('_v') !== '1') {
+            url.searchParams.set('_v', '1');
+            window.parent.location.replace(url);  // one-time redirect to signal Python
+        }
+    }
+})();
+</script>
+""", height=0, scrolling=False)
+
+# Python only tracks when JS confirmed a fresh visit via query param
 if "visited" not in st.session_state:
     st.session_state.visited = True
-    track(EV_VISIT)
+    if st.query_params.get("_v") == "1":
+        track(EV_VISIT)
+        # Strip the param so reruns don't double-count
+        clean = dict(st.query_params)
+        clean.pop("_v", None)
+        st.query_params.update(clean)
 
 
 # ==============================
