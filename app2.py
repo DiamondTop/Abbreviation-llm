@@ -288,12 +288,8 @@ def get_llm_response(history: list, file_context: str, provider: str) -> tuple[s
         if code == 503 or "no healthy upstream" in error_str:
             msg = (
                 "⚠️ **The selected model is temporarily unavailable.**\n\n"
-                "The free-tier provider hosting this model is down or overloaded "
-                "(OpenRouter 503 — no healthy upstream).\n\n"
-                "**Try one of these:**\n"
-                "- Switch to a different Reasoning Engine in the sidebar\n"
-                "- Wait 1–2 minutes and retry\n"
-                "- Check [OpenRouter status](https://openrouter.ai) for outages"
+                "The free-tier provider hosting this model is down or overloaded, please try again after 24 hours "
+
             )
         elif code == 401 or "401" in error_str:
             msg = (
