@@ -275,7 +275,50 @@ def get_llm_response(history: list, file_context: str, provider: str) -> tuple[s
         return response.choices[0].message.content, elapsed
 
     except Exception as e:
-        return f"Error: {str(e)}", 0.0
+        error_str = str(e)
+        elapsed = 0.0
+
+        # ── Parse the raw error code if present ──
+        code = None
+        import re
+        match = re.search(r"Error code: (\d+)", error_str)
+        if match:
+            code = int(match.group(1))
+
+        if code == 503 or "no healthy upstream" in error_str:
+            msg = (
+                "⚠️ **The selected model is temporarily unavailable.**\n\n"
+                "The free-tier provider hosting this model is down or overloaded "
+                "(OpenRouter 503 — no healthy upstream).\n\n"
+                "**Try one of these:**\n"
+                "- Switch to a different Reasoning Engine in the sidebar\n"
+                "- Wait 1–2 minutes and retry\n"
+                "- Check [OpenRouter status](https://openrouter.ai) for outages"
+            )
+        elif code == 401 or "401" in error_str:
+            msg = (
+                "🔑 **Authentication error.** Your OpenRouter API key is missing "
+                "or invalid. Check your `secrets.toml` file."
+            )
+        elif code == 429 or "429" in error_str:
+            msg = (
+                "🚦 **Rate limit hit.** You've sent too many requests too quickly. "
+                "Wait a moment and try again."
+            )
+        elif code == 400 or "400" in error_str:
+            msg = (
+                "❌ **Bad request.** The message or file content may be too long "
+                "for this model's context window. Try clearing the conversation or "
+                "removing attached files."
+            )
+        else:
+            msg = (
+                f"❌ **Unexpected error ({code or 'unknown'}).**\n\n"
+                f"Details: `{error_str}`\n\n"
+                "Try switching models or refreshing the page."
+            )
+
+        return msg, elapsed
 
 
 def build_download_text(history: list, provider: str, file_names: list) -> str:
