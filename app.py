@@ -1000,7 +1000,69 @@ if st.session_state.get("analysis_result"):
             """, unsafe_allow_html=True)
     else:
         display_text = result
+    # ── Application Recommendation Banner ───────────────────────────
+    if score_val >= 70:
+        rec_bg      = "rgba(40,167,69,0.08)"
+        rec_border  = "rgba(40,167,69,0.35)"
+        rec_accent  = "#28A745"
+        rec_icon    = "✦"
+        rec_heading = "Strong Match — We Recommend Applying"
+        rec_body    = (
+            "Your resume aligns well with this role. You have a high probability of "
+            "passing ATS screening and landing an interview. Apply with confidence, "
+            "and use the optimized bullets and cover letter above to strengthen your submission."
+        )
+    elif score_val >= 60:
+        rec_bg      = "rgba(255,165,0,0.07)"
+        rec_border  = "rgba(255,165,0,0.35)"
+        rec_accent  = "#FFA500"
+        rec_icon    = "◈"
+        rec_heading = "Moderate Match — Proceed Selectively"
+        rec_body    = (
+            "Your resume partially matches this role. Chances of being selected are slim, "
+            "but not impossible — particularly if you can close the skills gaps identified above "
+            "and tailor your cover letter closely to the job description. Apply if this role "
+            "is a strong priority for you."
+        )
+    else:
+        rec_bg      = "rgba(255,75,75,0.07)"
+        rec_border  = "rgba(255,75,75,0.32)"
+        rec_accent  = "#FF4B4B"
+        rec_icon    = "✕"
+        rec_heading = "Low Match — Not Recommended"
+        rec_body    = (
+            "Your current resume does not closely align with this role's requirements. "
+            "Applying as-is significantly reduces your chances of passing ATS filters or "
+            "reaching an interview. We recommend addressing the missing skills above, "
+            "or focusing your applications on roles that better match your profile."
+        )
 
+    st.markdown(f"""
+    <div style="margin-top:1.4rem; padding:1.3rem 1.6rem;
+                background:{rec_bg};
+                border:1px solid {rec_border};
+                border-left:4px solid {rec_accent};
+                border-radius:6px;">
+        <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.45rem;">
+            <span style="font-size:1rem; color:{rec_accent};">{rec_icon}</span>
+            <span style="font-family:'DM Mono',monospace; font-size:0.68rem;
+                         letter-spacing:0.16em; text-transform:uppercase;
+                         color:{rec_accent}; font-weight:500;">
+                Application Recommendation &nbsp;·&nbsp; {score_val}% Match
+            </span>
+        </div>
+        <div style="font-family:'Cormorant Garamond',serif; font-size:1.2rem;
+                    font-weight:300; color:#f0ede6; margin-bottom:0.4rem;">
+            {rec_heading}
+        </div>
+        <p style="font-family:'DM Sans',sans-serif; font-size:0.85rem;
+                  color:#9a958f; font-weight:300; line-height:1.8; margin:0;">
+            {rec_body}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<br/>", unsafe_allow_html=True)
     st.markdown("<hr/>", unsafe_allow_html=True)
 
     title_pill = (
