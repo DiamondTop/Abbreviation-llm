@@ -500,7 +500,7 @@ with st.sidebar:
 # CLIENT SETUP
 # ==============================
 model_map = {
-    "OpenAI · Recommended)": "openai/gpt-oss-120b:free",
+    "OpenAI · Recommended)": "openai/gpt-oss-120b", 
     "Nemo via Nvidia":                         "nvidia/nemotron-3-super-120b-a12b:free",
     "MiniMax":    "minimax/minimax-m2.5:free"
 }
