@@ -361,7 +361,7 @@ with st.sidebar:
     PROVIDER = st.selectbox(
         "LLM Engine",
         [
-            "OpenAI · Recommended)",
+            "Gemini · Recommended)",
             "Nemo via Nvidia",
             "MiniMax"
         ]
@@ -500,7 +500,7 @@ with st.sidebar:
 # CLIENT SETUP
 # ==============================
 model_map = {
-    "OpenAI · Recommended)": "openai/gpt-oss-120b:free", 
+    "Gemini AI · Recommended)": "google/gemma-4-31b-it:free", 
     "Nemo via Nvidia":                         "nvidia/nemotron-3-super-120b-a12b:free",
     "MiniMax":    "minimax/minimax-m2.5:free"
 }
